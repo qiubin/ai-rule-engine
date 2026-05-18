@@ -167,6 +167,10 @@ export default function RuleTypeMgr() {
     window.location.href = `/?type=${rule.ruleTypeId}&ruleId=${rule.id}&page=editor`
   }
 
+  const handlePageEditRule = (rule) => {
+    window.location.href = `/?type=${rule.ruleTypeId}&ruleId=${rule.id}&page=pageEditor`
+  }
+
   // 执行日志
   const openLogDrawer = async (rule) => {
     setCurrentLogRule(rule)
@@ -266,6 +270,7 @@ export default function RuleTypeMgr() {
       render: (_, record) => (
         <Space size={0} key={'ops-' + record.id}>
           <Button type="link" size="small" icon={<PartitionOutlined />} onClick={() => handleEditRule(record)}>编辑画布</Button>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handlePageEditRule(record)}>页面编辑</Button>
           <Button type="link" size="small" icon={<FileTextOutlined />} onClick={() => openLogDrawer(record)}>日志</Button>
           <Button type="link" size="small" icon={<HistoryOutlined />} onClick={() => openVersionModal(record)}>历史</Button>
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openMoveModal(record)}>移动</Button>

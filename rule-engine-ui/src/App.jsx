@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import RuleEditor from './pages/RuleEditor'
+import RulePageEditor from './pages/RulePageEditor'
 import RuleTypeMgr from './pages/RuleTypeMgr'
 import DataElementMgr from './pages/DataElementMgr'
 import DictionaryMgr from './pages/DictionaryMgr'
@@ -39,6 +40,7 @@ function App() {
     if (page) {
       const pageMap = {
         'editor': 'editor',
+        'pageEditor': 'pageEditor',
         'types': 'types',
         'system': 'system',
         'execute': 'execute',
@@ -60,6 +62,7 @@ function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'editor': return <RuleEditor />
+      case 'pageEditor': return <RulePageEditor />
       case 'types': return <RuleTypeMgr />
       case 'dataElements': return <DataElementMgr />
       case 'dictionaries': return <DictionaryMgr />

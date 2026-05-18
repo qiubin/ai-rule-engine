@@ -1,0 +1,41 @@
+.rule-page-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f0f2f5;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.editor-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  padding: 16px;
+  gap: 16px;
+}
+
+.editor-main {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 600px;
+}
+
+.editor-preview {
+  width: 420px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1200px) {
+  .editor-preview {
+    display: none;
+  }
+}
