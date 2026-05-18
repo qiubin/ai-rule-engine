@@ -68,13 +68,14 @@ export default function RuleExecute() {
     try {
       const canvas = JSON.parse(rule.canvasData)
       const nodes = canvas.nodes || []
-      const fieldMap = new Map() // field -> { field, dataType, label, operators: Set }
-      const upsert = (field, dataType, label, operator) => {
+      const fieldMap = new Map() // field -> { field, dataType, label, operators: Set, isTimeField }
+      const upsert = (field, dataType, label, operator, isTimeField = false) => {
         if (!field) return
         if (!fieldMap.has(field)) {
-          fieldMap.set(field, { field, dataType, label, operators: new Set() })
+          fieldMap.set(field, { field, dataType, label, operators: new Set(), isTimeField: false })
         }
         if (operator) fieldMap.get(field).operators.add(operator)
+        if (isTimeField) fieldMap.get(field).isTimeField = true
       }
       nodes.forEach(node => {
         if (node.type === 'condition' && node.data?.conditionConfig) {
@@ -84,6 +85,14 @@ export default function RuleExecute() {
             upsert(cfg.value, cfg.dataType, cfg.value + ' (字段A)', cfg.operator)
             upsert(cfg.extraValue1, cfg.dataType, cfg.extraValue1 + ' (字段B)', cfg.operator)
           }
+          // timeCheck 需要额外录入基准时间字段
+          if (cfg.operator === 'timeCheck' && cfg.value) {
+            upsert(cfg.value, cfg.dataType, '基准时间: ' + cfg.value, cfg.operator, true)
+            // 目标时间字段也标记为时间字段
+            if (fieldMap.has(cfg.field)) {
+              fieldMap.get(cfg.field).isTimeField = true
+            }
+          }
         }
       })
       const BLANK_OPS = new Set(['isBlank', 'isNotBlank'])
@@ -92,6 +101,7 @@ export default function RuleExecute() {
         dataType: f.dataType,
         label: f.label,
         optional: f.operators.size > 0 && Array.from(f.operators).every(op => BLANK_OPS.has(op)),
+        isTimeField: f.isTimeField,
       }))
     } catch (e) {
       return []
@@ -180,7 +190,10 @@ export default function RuleExecute() {
   }
 
   const renderInputByType = (field) => {
-    const { dataType } = field
+    const { dataType, isTimeField } = field
+    if (isTimeField) {
+      return <Input placeholder="格式：2024-01-15 08:30:00" />
+    }
     if (dataType === 'NUMERIC' || dataType === 'INTEGER') {
       return <Input type="number" placeholder={`请输入 ${field.label}`} />
     }
@@ -375,6 +388,7 @@ export default function RuleExecute() {
                               {f.label}
                               <Tag size="small" style={{ marginLeft: 4 }}>{f.dataType}</Tag>
                               {f.optional && <Tag color="blue" size="small">可空</Tag>}
+                              {f.isTimeField && <Tag color="orange" size="small">时间</Tag>}
                             </span>
                           }
                           rules={f.optional ? [] : [{ required: true, message: `请输入 ${f.label}` }]}

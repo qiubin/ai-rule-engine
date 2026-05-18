@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
@@ -344,6 +346,22 @@ public class DrlCompiler {
         return "!(" + condition + ")";
     }
 
+    private static final Pattern TIME_CHECK_PATTERN = Pattern.compile(
+            "RuleScriptUtils\\.timeCheck\\(\\(String\\)\\$param\\.get\\(\"([^\"]+)\"\\), \\(String\\)\\$param\\.get\\(\"([^\"]+)\"\\), ([^,]+), ([^,]+), \"([^\"]+)\"\\)"
+    );
+
+    private String extractTimeDiffComputation(String condition) {
+        Matcher matcher = TIME_CHECK_PATTERN.matcher(condition);
+        if (matcher.find()) {
+            String field = matcher.group(1);
+            String baseField = matcher.group(2);
+            String unit = matcher.group(5);
+            return "    long _diff = RuleScriptUtils.computeTimeDiff((String)$param.get(\"" + field + "\"), (String)$param.get(\"" + baseField + "\"), \"" + unit + "\");\n"
+                    + "    $param.put(\"_timeDiff\", String.valueOf(_diff));\n";
+        }
+        return "";
+    }
+
     private void generateResultRule(String ruleCode, String nodeLabel, String condition,
                                      JsonNode resultNode, List<String> hitConditionIds, StringBuilder rulesBuilder) {
         JsonNode data = resultNode.get("data");
@@ -364,11 +382,16 @@ public class DrlCompiler {
 
         String ruleName = sanitizeRuleName(ruleCode + "_" + nodeLabel + "_" + resultNodeId);
 
+        String timeDiffCode = extractTimeDiffComputation(condition);
+
         rulesBuilder.append("rule \"").append(ruleName).append("\"\n")
                 .append("when\n")
                 .append("    $param : Map(").append(condition).append(")\n")
-                .append("then\n")
-                .append("    Map r = new HashMap();\n")
+                .append("then\n");
+        if (!timeDiffCode.isEmpty()) {
+            rulesBuilder.append(timeDiffCode);
+        }
+        rulesBuilder.append("    Map r = new HashMap();\n")
                 .append("    r.put(\"ruleCode\", \"").append(ruleCode).append("\");\n")
                 .append("    r.put(\"nodeLabel\", \"").append(nodeLabel).append("\");\n")
                 .append("    r.put(\"resultType\", \"").append(resultType).append("\");\n")

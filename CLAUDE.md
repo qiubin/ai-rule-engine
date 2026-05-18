@@ -37,7 +37,7 @@ cd rule-engine-ui && npm run build && npx vite preview --port 5173 --host  # 360
 
 ## 数据库
 
-- MySQL 8，默认连接：`localhost:3306/ruleengine`，账号 `root` / `qiubin78`（在 [application.yml](rule-engine-server/src/main/resources/application.yml) 中以环境变量覆写）
+- MySQL 8，默认连接：`192.168.2.166:3306/ruleengine`，账号 `root` / `zoeddc@2017`（在 [application.yml](rule-engine-server/src/main/resources/application.yml) 中以环境变量覆写，如 `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_PASSWORD`）
 - `ddl-auto: update` 自动建表，但 [DataInitializer.java](rule-engine-server/src/main/java/com/ruleengine/config/DataInitializer.java) 会在启动时手动 `CREATE TABLE rule`，因为 JPA 给 `canvas_json` / `drl_text` 字段映射成了 MySQL 不支持的 `CLOB`。改这两个字段类型时必须同步改 DataInitializer 里的 DDL。
 - 启动时按 `code` 幂等地补齐字典/数据集/数据元/规则类型/条件分类/条件，已存在则跳过。
 
@@ -98,7 +98,7 @@ python3 docs/generate_qc_rules_skill.py
 python3 docs/generate_qc_rules_skill.py ./uploads/病历内涵质控.xlsx 15
 
 # 导入数据库
-mysql -h localhost -u root -pqiubin78 ruleengine < docs/medical_record_qc_rules.sql
+mysql -h 192.168.2.166 -u root -pzoeddc@2017 ruleengine < docs/medical_record_qc_rules.sql
 ```
 
 ### 规则模板映射

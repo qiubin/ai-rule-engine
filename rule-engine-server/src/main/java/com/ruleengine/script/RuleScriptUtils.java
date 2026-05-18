@@ -3,7 +3,9 @@ package com.ruleengine.script;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -313,14 +315,18 @@ public class RuleScriptUtils {
      * @return 在时间范围内返回 TRUE
      */
     public static boolean timeCheck(String targetTime, String baseTime, Integer minValue, Integer maxValue, String unit) {
+        log.info("[timeCheck] targetTime={}, baseTime={}, minValue={}, maxValue={}, unit={}", targetTime, baseTime, minValue, maxValue, unit);
         if (!StringUtils.hasText(targetTime) || !StringUtils.hasText(baseTime)) {
+            log.warn("[timeCheck] 返回false: targetTime或baseTime为空");
             return false;
         }
 
         try {
             LocalDateTime target = parseDateTime(targetTime);
             LocalDateTime base = parseDateTime(baseTime);
+            log.info("[timeCheck] 解析后 target={}, base={}", target, base);
             if (target == null || base == null) {
+                log.warn("[timeCheck] 返回false: parseDateTime返回null, targetParsed={}, baseParsed={}", target, base);
                 return false;
             }
 
@@ -340,14 +346,55 @@ public class RuleScriptUtils {
             }
 
             long diff = Math.abs(chronoUnit.between(base, target));
+            log.info("[timeCheck] diff={}, unit={}", diff, unitNorm);
 
             boolean minCondition = (minValue == null) || (diff >= minValue);
             boolean maxCondition = (maxValue == null) || (diff <= maxValue);
+            log.info("[timeCheck] minCondition={}, maxCondition={}, 最终结果={}", minCondition, maxCondition, minCondition && maxCondition);
 
             return minCondition && maxCondition;
         } catch (Exception e) {
-            log.error("时间判断解析错误, targetTime: {}, baseTime: {}, unit: {}", targetTime, baseTime, unit, e);
+            log.error("[timeCheck] 解析错误, targetTime: {}, baseTime: {}, unit: {}", targetTime, baseTime, unit, e);
             return false;
+        }
+    }
+
+    /**
+     * 计算两个时间的差值，供 DRL 结果节点引用。
+     *
+     * @param targetTime 目标时间字符串
+     * @param baseTime 基准时间字符串
+     * @param unit 时间单位：HOUR / MINUTE / DAY
+     * @return 差值（绝对值），解析失败返回 -1
+     */
+    public static long computeTimeDiff(String targetTime, String baseTime, String unit) {
+        if (!StringUtils.hasText(targetTime) || !StringUtils.hasText(baseTime)) {
+            return -1;
+        }
+        try {
+            LocalDateTime target = parseDateTime(targetTime);
+            LocalDateTime base = parseDateTime(baseTime);
+            if (target == null || base == null) {
+                return -1;
+            }
+            ChronoUnit chronoUnit;
+            String unitNorm = (unit != null) ? unit.trim().toUpperCase() : "HOUR";
+            switch (unitNorm) {
+                case "MINUTE":
+                    chronoUnit = ChronoUnit.MINUTES;
+                    break;
+                case "DAY":
+                    chronoUnit = ChronoUnit.DAYS;
+                    break;
+                case "HOUR":
+                default:
+                    chronoUnit = ChronoUnit.HOURS;
+                    break;
+            }
+            return Math.abs(chronoUnit.between(base, target));
+        } catch (Exception e) {
+            log.error("[computeTimeDiff] 解析错误, targetTime: {}, baseTime: {}, unit: {}", targetTime, baseTime, unit, e);
+            return -1;
         }
     }
 
@@ -576,25 +623,38 @@ public class RuleScriptUtils {
         String s = String.valueOf(value).trim();
         if (!StringUtils.hasText(s)) return null;
 
-        // 尝试多种格式
-        String[] patterns = {
+        // 先尝试带时间的格式
+        String[] dateTimePatterns = {
             "yyyy-MM-dd HH:mm:ss",
             "yyyy-MM-dd HH:mm",
-            "yyyy-MM-dd",
             "yyyy/MM/dd HH:mm:ss",
             "yyyy/MM/dd HH:mm",
-            "yyyy/MM/dd",
             "yyyy年MM月dd日 HH:mm:ss",
             "yyyy年MM月dd日 HH:mm",
-            "yyyy年MM月dd日",
         };
-        for (String p : patterns) {
+        for (String p : dateTimePatterns) {
             try {
                 return LocalDateTime.parse(s, DateTimeFormatter.ofPattern(p));
             } catch (Exception e) {
                 // 继续尝试下一种格式
             }
         }
+
+        // 纯日期格式：解析为 LocalDate 后补 00:00:00
+        String[] dateOnlyPatterns = {
+            "yyyy-MM-dd",
+            "yyyy/MM/dd",
+            "yyyy年MM月dd日",
+        };
+        for (String p : dateOnlyPatterns) {
+            try {
+                LocalDate date = LocalDate.parse(s, DateTimeFormatter.ofPattern(p));
+                return LocalDateTime.of(date, LocalTime.MIN);
+            } catch (Exception e) {
+                // 继续尝试下一种格式
+            }
+        }
+
         log.warn("无法解析时间: {}", s);
         return null;
     }

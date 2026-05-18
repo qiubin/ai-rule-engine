@@ -22,6 +22,8 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
   const [selectedDatasetId, setSelectedDatasetId] = useState(null)
   // 来自数据元的字典编码（用于条件值自动加载字典项）
   const [elementDictCode, setElementDictCode] = useState(null)
+  // timeCheck 基准时间字段相关的数据集
+  const [selectedBaseDatasetId, setSelectedBaseDatasetId] = useState(null)
 
   useEffect(() => {
     if (node && open) {
@@ -49,6 +51,11 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
           // 等数据加载完成后再反推，见下方的 useEffect
           setSelectedCategoryId(null)
           setSelectedDatasetId(null)
+        }
+        // 尝试反推旧节点的基准时间数据集ID
+        const savedBaseCmId = node.data?.conditionConfig?.baseConditionModelId
+        if (savedBaseCmId) {
+          setSelectedBaseDatasetId(null)
         }
       } else if (node.type === 'result') {
         fetchAllResultConfigs()
@@ -90,6 +97,23 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
               setElementDictCode(de.dictCode || null)
               form.setFieldsValue({
                 datasetId: [ds.catL1Code, ds.catL2Code, ds.catL3Code, ds.id]
+              })
+            }
+          }
+        }
+      }
+      // 反推基准时间数据集ID
+      const savedBaseCmId = node.data?.conditionConfig?.baseConditionModelId
+      if (savedBaseCmId) {
+        const cm = allConditions.find(c => c.id === savedBaseCmId)
+        if (cm?.dataElementId) {
+          const de = dataElements.find(d => d.id === cm.dataElementId)
+          if (de?.datasetId) {
+            const ds = dataSets.find(s => s.id === de.datasetId)
+            if (ds) {
+              setSelectedBaseDatasetId(de.datasetId)
+              form.setFieldsValue({
+                baseDatasetId: [ds.catL1Code, ds.catL2Code, ds.catL3Code, ds.id]
               })
             }
           }
@@ -215,6 +239,12 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
     return allConditions.filter(cm => deIds.includes(cm.dataElementId))
   }, [selectedDatasetId, dataElements, allConditions])
 
+  const filteredBaseConditions = useMemo(() => {
+    if (!selectedBaseDatasetId) return []
+    const deIds = dataElements.filter(de => de.datasetId === selectedBaseDatasetId).map(de => de.id)
+    return allConditions.filter(cm => deIds.includes(cm.dataElementId))
+  }, [selectedBaseDatasetId, dataElements, allConditions])
+
   const handleSave = () => {
     const values = form.getFieldsValue()
     if (!node) return
@@ -240,6 +270,8 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
         valueSource: 'ADAPTER',
         conditionModelId: values.conditionModelId,
         datasetId: Array.isArray(values.datasetId) ? values.datasetId[values.datasetId.length - 1] : values.datasetId,
+        baseConditionModelId: values.baseConditionModelId,
+        baseDatasetId: Array.isArray(values.baseDatasetId) ? values.baseDatasetId[values.baseDatasetId.length - 1] : values.baseDatasetId,
       }
     } else if (node.type === 'result') {
       const selectedRc = resultConfigs.find(r => r.id === values.resultConfigId)
@@ -636,8 +668,43 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
         </>
       ) : selectedOperator === 'timeCheck' ? (
         <>
-          <Form.Item name="value" label="基准时间字段" rules={[{ required: true }]}>
-            <Input placeholder="如: baseTime" />
+          <Form.Item name="baseDatasetId" label="基准时间数据集" rules={[{ required: true, message: '必须选择基准时间数据集' }]}>
+            <Cascader
+              options={cascaderOptions}
+              placeholder="选择基准时间数据集分类"
+              onChange={(value) => {
+                const dsId = value?.[value.length - 1]
+                setSelectedBaseDatasetId(dsId || null)
+                form.setFieldsValue({ baseConditionModelId: undefined, value: undefined })
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="baseConditionModelId" label="基准时间数据元/条件" rules={[{ required: true, message: '必须选择基准时间数据元' }]}>
+            <Select
+              placeholder={selectedBaseDatasetId ? '选择该数据集下的数据元' : '请先选择基准时间数据集'}
+              disabled={!selectedBaseDatasetId}
+              onChange={(modelId) => {
+                const model = allConditions.find(m => m.id === modelId)
+                if (model) {
+                  form.setFieldsValue({
+                    value: model.code,
+                  })
+                }
+              }}
+            >
+              {filteredBaseConditions.map(cm => {
+                const de = dataElements.find(d => d.id === cm.dataElementId)
+                return (
+                  <Option key={cm.id} value={cm.id}>
+                    {de?.name || cm.name}
+                    <Tag color="blue" style={{ marginLeft: 8 }}>{cm.dataType}</Tag>
+                  </Option>
+                )
+              })}
+            </Select>
+          </Form.Item>
+          <Form.Item name="value" label="基准时间字段">
+            <Input disabled placeholder="自动来自基准时间数据元编码" />
           </Form.Item>
           <Form.Item name="extraValue1" label="最小相差小时数">
             <Input placeholder="留空则不限制" />

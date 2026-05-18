@@ -235,13 +235,14 @@ function FlowCanvas() {
 
   // 解析画布中的条件字段
   const parseConditionFields = () => {
-    const fieldMap = new Map() // field -> { field, dataType, label, operators: Set }
-    const upsert = (field, dataType, label, operator) => {
+    const fieldMap = new Map() // field -> { field, dataType, label, operators: Set, isTimeField }
+    const upsert = (field, dataType, label, operator, isTimeField = false) => {
       if (!field) return
       if (!fieldMap.has(field)) {
-        fieldMap.set(field, { field, dataType, label, operators: new Set() })
+        fieldMap.set(field, { field, dataType, label, operators: new Set(), isTimeField: false })
       }
       if (operator) fieldMap.get(field).operators.add(operator)
+      if (isTimeField) fieldMap.get(field).isTimeField = true
     }
     nodes.forEach(node => {
       if (node.type === 'condition' && node.data?.conditionConfig) {
@@ -252,6 +253,14 @@ function FlowCanvas() {
           upsert(cfg.value, cfg.dataType, cfg.value + ' (字段A)', cfg.operator)
           upsert(cfg.extraValue1, cfg.dataType, cfg.extraValue1 + ' (字段B)', cfg.operator)
         }
+        // timeCheck 需要额外录入基准时间字段
+        if (cfg.operator === 'timeCheck' && cfg.value) {
+          upsert(cfg.value, cfg.dataType, '基准时间: ' + cfg.value, cfg.operator, true)
+          // 目标时间字段也标记为时间字段
+          if (fieldMap.has(cfg.field)) {
+            fieldMap.get(cfg.field).isTimeField = true
+          }
+        }
       }
     })
     // 仅当字段所有用到的操作符都是空值/非空校验时，才允许留空
@@ -261,6 +270,7 @@ function FlowCanvas() {
       dataType: f.dataType,
       label: f.label,
       optional: f.operators.size > 0 && Array.from(f.operators).every(op => BLANK_OPS.has(op)),
+      isTimeField: f.isTimeField,
     }))
   }
 
@@ -491,11 +501,21 @@ function FlowCanvas() {
                     <span>
                       {f.label} ({f.dataType || 'STRING'})
                       {f.optional && <Tag color="blue" style={{ marginLeft: 8 }}>可空</Tag>}
+                      {f.isTimeField && <Tag color="orange" style={{ marginLeft: 8 }}>时间</Tag>}
                     </span>
                   }
                   rules={f.optional ? [] : [{ required: true, message: `请输入 ${f.label}` }]}
                 >
-                  <Input placeholder={f.optional ? `请输入 ${f.label}（留空表示空值）` : `请输入 ${f.label}`} allowClear={f.optional} />
+                  <Input
+                    placeholder={
+                      f.isTimeField
+                        ? '格式：2024-01-15 08:30:00'
+                        : f.optional
+                          ? `请输入 ${f.label}（留空表示空值）`
+                          : `请输入 ${f.label}`
+                    }
+                    allowClear={f.optional}
+                  />
                 </Form.Item>
               ))}
             </>
