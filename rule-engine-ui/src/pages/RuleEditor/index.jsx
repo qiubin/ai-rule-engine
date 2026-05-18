@@ -11,7 +11,7 @@ import ReactFlow, {
 } from 'reactflow'
 import { Button, message, Modal, Input, Select, Form, Tag } from 'antd'
 import { SaveOutlined, PlayCircleOutlined, PlusOutlined, DeleteOutlined, ArrowLeftOutlined, ColumnWidthOutlined } from '@ant-design/icons'
-import * as dagre from 'dagre'
+import dagre from '@dagrejs/dagre'
 import { nodeTypes } from '../../components/Nodes'
 import ConfigPanel from '../../components/ConfigPanel'
 import ToolBar from '../../components/ToolBar'
