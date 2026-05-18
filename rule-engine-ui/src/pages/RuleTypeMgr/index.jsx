@@ -270,7 +270,7 @@ export default function RuleTypeMgr() {
           <Button type="link" size="small" icon={<HistoryOutlined />} onClick={() => openVersionModal(record)}>历史</Button>
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openMoveModal(record)}>移动</Button>
           <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => {
-            if (window.confirm('确认删除规则 ' + record.name + '?')) {
+            if (window.confirm('确认将规则「' + record.name + '」移入回收站？')) {
               handleDeleteRule(record.id)
             }
           }}>删除</Button>

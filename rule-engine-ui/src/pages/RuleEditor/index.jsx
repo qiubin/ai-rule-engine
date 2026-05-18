@@ -10,7 +10,7 @@ import ReactFlow, {
   Panel,
 } from 'reactflow'
 import { Button, message, Modal, Input, Select, Form, Tag } from 'antd'
-import { SaveOutlined, PlayCircleOutlined, PlusOutlined, DeleteOutlined, ArrowLeftOutlined, ColumnWidthOutlined } from '@ant-design/icons'
+import { SaveOutlined, PlayCircleOutlined, PlusOutlined, DeleteOutlined, ArrowLeftOutlined, ColumnWidthOutlined, CloudUploadOutlined, RollbackOutlined, StopOutlined } from '@ant-design/icons'
 import dagre from '@dagrejs/dagre'
 import { nodeTypes } from '../../components/Nodes'
 import ConfigPanel from '../../components/ConfigPanel'
@@ -274,6 +274,41 @@ function FlowCanvas() {
     }))
   }
 
+  const handlePublish = async () => {
+    if (!currentRule) { message.warning('请先保存规则'); return }
+    try {
+      // 发布前先静默保存画布，确保 DRL 已生成
+      await doSaveCanvas(currentRule.id, true)
+      const res = await axios.post(`${API_BASE}/rules/${currentRule.id}/publish`)
+      setCurrentRule(res.data)
+      message.success('规则发布成功')
+    } catch (err) {
+      message.error('发布失败: ' + (err.response?.data?.message || err.message))
+    }
+  }
+
+  const handleWithdraw = async () => {
+    if (!currentRule) return
+    try {
+      const res = await axios.post(`${API_BASE}/rules/${currentRule.id}/withdraw`)
+      setCurrentRule(res.data)
+      message.success('规则已撤回为草稿')
+    } catch (err) {
+      message.error('撤回失败: ' + (err.response?.data?.message || err.message))
+    }
+  }
+
+  const handleDisable = async () => {
+    if (!currentRule) return
+    try {
+      const res = await axios.post(`${API_BASE}/rules/${currentRule.id}/disable`)
+      setCurrentRule(res.data)
+      message.success('规则已停用')
+    } catch (err) {
+      message.error('停用失败: ' + (err.response?.data?.message || err.message))
+    }
+  }
+
   const handleExecute = async () => {
     if (!currentRule) { message.warning('请先保存规则'); return }
     const fields = parseConditionFields()
@@ -464,11 +499,38 @@ function FlowCanvas() {
           <Panel position="top-right">
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <Button icon={<ArrowLeftOutlined />} onClick={goBack}>返回</Button>
-              {currentRule && <span style={{ background: '#f0f0f0', padding: '4px 12px', borderRadius: 4, fontSize: 13 }}>
-                当前规则: {currentRule.name} ({currentRule.code})
-              </span>}
+              {currentRule && (
+                <>
+                  <span style={{ background: '#f0f0f0', padding: '4px 12px', borderRadius: 4, fontSize: 13 }}>
+                    当前规则: {currentRule.name} ({currentRule.code})
+                  </span>
+                  <Tag color={
+                    currentRule.status === 'PUBLISHED' ? 'success' :
+                    currentRule.status === 'DISABLED' ? 'error' : 'processing'
+                  }>
+                    {currentRule.status === 'PUBLISHED' ? '已发布' :
+                     currentRule.status === 'DISABLED' ? '已停用' : '草稿'}
+                  </Tag>
+                </>
+              )}
               <Button icon={<ColumnWidthOutlined />} onClick={handleAutoLayout}>一键排列</Button>
               <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveCanvas}>保存画布</Button>
+              {currentRule && currentRule.status !== 'PUBLISHED' && currentRule.status !== 'DISABLED' && (
+                <Button icon={<CloudUploadOutlined />} onClick={handlePublish}>
+                  发布规则
+                </Button>
+              )}
+              {currentRule && currentRule.status === 'PUBLISHED' && (
+                <>
+                  <Button icon={<RollbackOutlined />} onClick={handleWithdraw}>撤回</Button>
+                  <Button danger icon={<StopOutlined />} onClick={handleDisable}>停用</Button>
+                </>
+              )}
+              {currentRule && currentRule.status === 'DISABLED' && (
+                <Button icon={<CloudUploadOutlined />} onClick={handlePublish}>
+                  重新发布
+                </Button>
+              )}
               <Button icon={<PlayCircleOutlined />} onClick={handleExecute}>测试执行</Button>
               {selectedNode && (
                 <Button danger icon={<DeleteOutlined />} onClick={handleDeleteNode}>删除节点</Button>

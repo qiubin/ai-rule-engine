@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,18 +36,22 @@ public class RuleService {
     private final com.ruleengine.drools.adapter.EmrDataService emrDataService;
 
     public List<Rule> findAll() {
-        return ruleRepository.findAll();
+        return ruleRepository.findByDeletedFalse();
     }
 
     public List<Rule> findByRuleTypeId(Long ruleTypeId) {
-        return ruleRepository.findByRuleTypeId(ruleTypeId);
+        return ruleRepository.findByDeletedFalseAndRuleTypeId(ruleTypeId);
     }
 
     public List<Rule> findByRuleTypeIds(List<Long> ruleTypeIds) {
         if (ruleTypeIds == null || ruleTypeIds.isEmpty()) {
             return Collections.emptyList();
         }
-        return ruleRepository.findByRuleTypeIdIn(ruleTypeIds);
+        return ruleRepository.findByDeletedFalseAndRuleTypeIdIn(ruleTypeIds);
+    }
+
+    public List<Rule> findDeleted() {
+        return ruleRepository.findByDeletedTrue();
     }
 
     public Rule findById(Long id) {
@@ -113,8 +118,57 @@ public class RuleService {
     }
 
     @Transactional
-    public void deleteById(Long id) {
+    public Rule withdraw(Long id) {
+        Rule rule = findById(id);
+        if (rule.getStatus() != RuleStatus.PUBLISHED) {
+            throw new RuntimeException("只有已发布的规则才能撤回");
+        }
+        rule.setStatus(RuleStatus.DRAFT);
+        log.info("规则 [{}] 已撤回为草稿", rule.getCode());
+        return ruleRepository.save(rule);
+    }
+
+    @Transactional
+    public Rule disable(Long id) {
+        Rule rule = findById(id);
+        if (rule.getStatus() != RuleStatus.PUBLISHED) {
+            throw new RuntimeException("只有已发布的规则才能停用");
+        }
+        rule.setStatus(RuleStatus.DISABLED);
+        log.info("规则 [{}] 已停用", rule.getCode());
+        return ruleRepository.save(rule);
+    }
+
+    @Transactional
+    public Rule deleteById(Long id) {
+        Rule rule = findById(id);
+        rule.setDeleted(true);
+        rule.setDeletedAt(LocalDateTime.now());
+        log.info("规则 [{}] 已移入回收站", rule.getCode());
+        return ruleRepository.save(rule);
+    }
+
+    @Transactional
+    public Rule restore(Long id) {
+        Rule rule = findById(id);
+        if (!Boolean.TRUE.equals(rule.getDeleted())) {
+            throw new RuntimeException("该规则不在回收站中");
+        }
+        rule.setDeleted(false);
+        rule.setDeletedAt(null);
+        rule.setStatus(RuleStatus.DRAFT);
+        log.info("规则 [{}] 已从回收站恢复", rule.getCode());
+        return ruleRepository.save(rule);
+    }
+
+    @Transactional
+    public void permanentDelete(Long id) {
+        Rule rule = findById(id);
+        if (!Boolean.TRUE.equals(rule.getDeleted())) {
+            throw new RuntimeException("只能彻底删除回收站中的规则");
+        }
         ruleRepository.deleteById(id);
+        log.info("规则 [{}] 已彻底删除", rule.getCode());
     }
 
     public Map<String, Object> execute(String ruleCode, Map<String, Object> parameters) {

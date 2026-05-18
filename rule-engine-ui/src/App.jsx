@@ -8,16 +8,19 @@ import ConditionModelMgr from './pages/ConditionModelMgr'
 import ResultModelMgr from './pages/ResultModelMgr'
 import RuleExecute from './pages/RuleExecute'
 import SystemMenu from './pages/SystemMenu'
+import RecycleBin from './pages/RecycleBin'
 
 const NAV_ITEMS = [
   { key: 'types', label: '规则类型' },
   { key: 'execute', label: '规则执行' },
+  { key: 'recycle', label: '回收站' },
   { key: 'system', label: '系统管理' },
 ]
 
 const PAGE_NAME_MAP = {
   'types': '规则类型',
   'execute': '规则执行',
+  'recycle': '回收站',
   'system': '系统管理',
   'editor': '规则编辑器',
 }
@@ -39,6 +42,7 @@ function App() {
         'types': 'types',
         'system': 'system',
         'execute': 'execute',
+        'recycle': 'recycle',
       }
       if (pageMap[page]) {
         setCurrentPage(pageMap[page])
@@ -62,6 +66,7 @@ function App() {
       case 'models': return <ConditionModelMgr />
       case 'results': return <ResultModelMgr />
       case 'execute': return <RuleExecute />
+      case 'recycle': return <RecycleBin />
       case 'system': return <SystemMenu />
       default: return <RuleTypeMgr />
     }

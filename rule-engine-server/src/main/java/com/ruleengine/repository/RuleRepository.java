@@ -15,4 +15,13 @@ public interface RuleRepository extends JpaRepository<Rule, Long> {
     List<Rule> findByRuleTypeIdIn(List<Long> ruleTypeIds);
     long countByRuleTypeId(Long ruleTypeId);
     List<Rule> findByStatus(RuleStatus status);
+
+    // 回收站查询
+    List<Rule> findByDeletedTrue();
+
+    // 排除已删除的规则
+    List<Rule> findByDeletedFalse();
+    List<Rule> findByDeletedFalseAndRuleTypeId(Long ruleTypeId);
+    List<Rule> findByDeletedFalseAndRuleTypeIdIn(List<Long> ruleTypeIds);
+    long countByDeletedFalseAndRuleTypeId(Long ruleTypeId);
 }

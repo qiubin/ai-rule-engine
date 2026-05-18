@@ -61,6 +61,16 @@ public class RuleController {
         return ResponseEntity.ok(ruleService.publish(id));
     }
 
+    @PostMapping("/{id}/withdraw")
+    public ResponseEntity<Rule> withdraw(@PathVariable Long id) {
+        return ResponseEntity.ok(ruleService.withdraw(id));
+    }
+
+    @PostMapping("/{id}/disable")
+    public ResponseEntity<Rule> disable(@PathVariable Long id) {
+        return ResponseEntity.ok(ruleService.disable(id));
+    }
+
     @PostMapping("/{id}/execute")
     public ResponseEntity<Map<String, Object>> execute(
             @PathVariable Long id,
@@ -100,8 +110,23 @@ public class RuleController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        ruleService.deleteById(id);
+    public ResponseEntity<Rule> delete(@PathVariable Long id) {
+        return ResponseEntity.ok(ruleService.deleteById(id));
+    }
+
+    @GetMapping("/deleted")
+    public ResponseEntity<List<Rule>> listDeleted() {
+        return ResponseEntity.ok(ruleService.findDeleted());
+    }
+
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<Rule> restore(@PathVariable Long id) {
+        return ResponseEntity.ok(ruleService.restore(id));
+    }
+
+    @DeleteMapping("/{id}/permanent")
+    public ResponseEntity<Void> permanentDelete(@PathVariable Long id) {
+        ruleService.permanentDelete(id);
         return ResponseEntity.ok().build();
     }
 }
