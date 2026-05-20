@@ -25,12 +25,10 @@ public class RuleVersion {
     @Column(name = "version", nullable = false)
     private Integer version;
 
-    @Lob
-    @Column(name = "canvas_data", columnDefinition = "CLOB")
+    @Column(name = "canvas_data", columnDefinition = "LONGTEXT")
     private String canvasData;
 
-    @Lob
-    @Column(name = "drools_drl", columnDefinition = "CLOB")
+    @Column(name = "drools_drl", columnDefinition = "LONGTEXT")
     private String droolsDrl;
 
     @Column(name = "change_note", length = 255)

@@ -43,12 +43,10 @@ public class PathwayInstance {
     @Column(name = "current_stage_entry_time")
     private LocalDateTime currentStageEntryTime;
 
-    @Lob
-    @Column(name = "variables", columnDefinition = "CLOB")
+    @Column(name = "variables", columnDefinition = "LONGTEXT")
     private String variables;
 
-    @Lob
-    @Column(name = "execution_log", columnDefinition = "CLOB")
+    @Column(name = "execution_log", columnDefinition = "LONGTEXT")
     private String executionLog;
 
     @CreationTimestamp

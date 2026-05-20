@@ -40,12 +40,10 @@ public class Rule {
     @Column(name = "rule_type_id", nullable = false)
     private Long ruleTypeId;
 
-    @Lob
-    @Column(name = "canvas_data", columnDefinition = "CLOB")
+    @Column(name = "canvas_data", columnDefinition = "LONGTEXT")
     private String canvasData; // JSON: ReactFlow nodes + edges
 
-    @Lob
-    @Column(name = "drools_drl", columnDefinition = "CLOB")
+    @Column(name = "drools_drl", columnDefinition = "LONGTEXT")
     private String droolsDrl; // 生成的DRL规则文本
 
     @CreationTimestamp

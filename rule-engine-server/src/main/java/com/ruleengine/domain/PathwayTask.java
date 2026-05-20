@@ -37,8 +37,7 @@ public class PathwayTask {
     @Column(name = "process_node_id", length = 64)
     private String processNodeId;
 
-    @Lob
-    @Column(name = "config", columnDefinition = "CLOB")
+    @Column(name = "config", columnDefinition = "LONGTEXT")
     private String config;
 
     @Column(name = "required", nullable = false)

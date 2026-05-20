@@ -28,16 +28,13 @@ public class RuleExecutionLog {
     @Column(name = "rule_version", length = 16)
     private String ruleVersion;
 
-    @Lob
-    @Column(name = "params_json", columnDefinition = "CLOB")
+    @Column(name = "params_json", columnDefinition = "LONGTEXT")
     private String paramsJson;
 
-    @Lob
-    @Column(name = "output_json", columnDefinition = "CLOB")
+    @Column(name = "output_json", columnDefinition = "LONGTEXT")
     private String outputJson;
 
-    @Lob
-    @Column(name = "hit_node_ids", columnDefinition = "CLOB")
+    @Column(name = "hit_node_ids", columnDefinition = "LONGTEXT")
     private String hitNodeIds;
 
     @Column(name = "fired_count")
@@ -49,8 +46,7 @@ public class RuleExecutionLog {
     @Column(name = "status", length = 16, nullable = false)
     private String status; // SUCCESS, NO_HIT, ERROR
 
-    @Lob
-    @Column(name = "error_message", columnDefinition = "CLOB")
+    @Column(name = "error_message", columnDefinition = "LONGTEXT")
     private String errorMessage;
 
     @CreationTimestamp

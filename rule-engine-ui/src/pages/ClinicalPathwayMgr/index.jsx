@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
-  Layout, Table, Button, Modal, Form, Input, Tag, message, Space, Drawer, Popconfirm
+  Layout, Table, Button, Modal, Form, Input, Select, Tag, message, Space, Drawer, Popconfirm
 } from 'antd'
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, SettingOutlined, CheckCircleOutlined
@@ -21,6 +21,7 @@ export default function ClinicalPathwayMgr() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form] = Form.useForm()
+  const [processList, setProcessList] = useState([])
 
   const [stageDrawerOpen, setStageDrawerOpen] = useState(false)
   const [currentPathway, setCurrentPathway] = useState(null)
@@ -40,7 +41,12 @@ export default function ClinicalPathwayMgr() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchList() }, [fetchList])
+  useEffect(() => {
+    fetchList()
+    axios.get('/api/v1/processes').then(res => {
+      setProcessList(Array.isArray(res.data) ? res.data : [])
+    }).catch(() => {})
+  }, [fetchList])
 
   const handleSave = async () => {
     const values = await form.validateFields()
@@ -107,7 +113,9 @@ export default function ClinicalPathwayMgr() {
   const handleSaveStages = async () => {
     if (!currentPathway) return
     try {
-      await axios.post(`${API}/${currentPathway.id}/stages`, stages)
+      // 后端重新创建阶段记录，去掉临时 ID 避免 Long 反序列化失败
+      const data = stages.map(({ id, createdAt, updatedAt, ...rest }) => rest)
+      await axios.post(`${API}/${currentPathway.id}/stages`, data)
       message.success('阶段配置保存成功')
       setStageDrawerOpen(false)
     } catch (e) {
@@ -157,6 +165,17 @@ export default function ClinicalPathwayMgr() {
       render: v => {
         const cfg = STATUS_MAP[v] || { color: 'default', text: v }
         return <Tag color={cfg.color}>{cfg.text}</Tag>
+      }
+    },
+    {
+      title: '关联流程',
+      dataIndex: 'processDefId',
+      width: 140,
+      ellipsis: true,
+      render: v => {
+        if (!v) return '-'
+        const p = processList.find(p => p.id === v)
+        return p ? (p.name || p.code) : `ID:${v}`
       }
     },
     {
@@ -238,6 +257,15 @@ export default function ClinicalPathwayMgr() {
           </Form.Item>
           <Form.Item name="admissionRuleCode" label="准入规则编码">
             <Input placeholder="关联的准入规则编码" />
+          </Form.Item>
+          <Form.Item name="processDefId" label="关联流程定义">
+            <Select allowClear placeholder="选择流程编排定义（可选）">
+              {processList.map(p => (
+                <Select.Option key={p.id} value={p.id}>
+                  {p.name || p.code}
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
         </Form>
       </Modal>

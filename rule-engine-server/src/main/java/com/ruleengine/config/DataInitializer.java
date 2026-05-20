@@ -298,7 +298,6 @@ public class DataInitializer implements CommandLineRunner {
         initForbiddenTypeCondition();
         initResultConfigs();
 
-        resetAllRulesToDraft();
         initAdapterConfig();
 
         log.info("基础数据初始化完成");

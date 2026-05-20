@@ -35,14 +35,14 @@ public class ProcessInstance {
     private ProcessInstanceStatus status = ProcessInstanceStatus.RUNNING;
 
     @Lob
-    @Column(name = "variables", columnDefinition = "CLOB")
+    @Column(name = "variables", columnDefinition = "LONGTEXT")
     private String variables; // JSON: 流程变量
 
     @Column(name = "current_node_ids", length = 512)
     private String currentNodeIds; // 逗号分隔的当前节点ID
 
     @Lob
-    @Column(name = "execution_log", columnDefinition = "CLOB")
+    @Column(name = "execution_log", columnDefinition = "LONGTEXT")
     private String executionLog; // JSON: 执行历史记录
 
     @Column(name = "error_message", length = 1024)

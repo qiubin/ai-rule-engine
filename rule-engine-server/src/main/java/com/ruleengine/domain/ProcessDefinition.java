@@ -37,12 +37,10 @@ public class ProcessDefinition {
     @Enumerated(EnumType.STRING)
     private ProcessStatus status = ProcessStatus.DRAFT;
 
-    @Lob
-    @Column(name = "canvas_data", columnDefinition = "CLOB")
+    @Column(name = "canvas_data", columnDefinition = "LONGTEXT")
     private String canvasData; // JSON: ReactFlow nodes + edges
 
-    @Lob
-    @Column(name = "node_configs", columnDefinition = "CLOB")
+    @Column(name = "node_configs", columnDefinition = "LONGTEXT")
     private String nodeConfigs; // JSON: 节点额外配置
 
     @CreationTimestamp
