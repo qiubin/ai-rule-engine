@@ -51,7 +51,12 @@ copy_files() {
 
     cp "$SCRIPT_DIR/rule-engine-server-1.0.0-SNAPSHOT.jar" "$APP_HOME/"
     cp -r "$SCRIPT_DIR/bin" "$APP_HOME/"
-    cp -r "$SCRIPT_DIR/config" "$APP_HOME/"
+    # 复制 config 下除 env.sh 之外的文件，不覆盖已有的数据库密码配置
+    mkdir -p "$APP_HOME/config"
+    for f in "$SCRIPT_DIR/config/"*; do
+        [ "$(basename "$f")" = "env.sh" ] && [ -f "$APP_HOME/config/env.sh" ] && continue
+        cp -r "$f" "$APP_HOME/config/"
+    done
     cp -r "$SCRIPT_DIR/frontend" "$APP_HOME/"
 
     chmod +x "$APP_HOME/bin/start.sh"
