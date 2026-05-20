@@ -338,6 +338,8 @@ public class DrlCompiler {
             String op = extraValue3;
             String threshold = extraValue4;
             return String.format("RuleScriptUtils.fieldCompare($param.get(\"%s\"), $param.get(\"%s\"), \"%s\", \"%s\", \"%s\")", fieldA, fieldB, compareType, op, threshold);
+        } else if ("IN_SET".equals(operator)) {
+            return String.format("RuleScriptUtils.inSet($param.get(\"%s\"), \"%s\")", field, valueStr);
         }
         return "true";
     }

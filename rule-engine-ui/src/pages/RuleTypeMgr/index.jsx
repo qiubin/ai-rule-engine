@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Layout, Table, Button, Modal, Form, Input, Empty, Card, Drawer, Tag, Space, Descriptions, message, Select } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, PartitionOutlined, HistoryOutlined, FileTextOutlined, EyeOutlined, RollbackOutlined, CaretRightOutlined, CaretDownOutlined } from '@ant-design/icons'
+import { Layout, Table, Button, Modal, Form, Input, Empty, Card, Drawer, Tag, Space, Descriptions, message, Select, Upload } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, PartitionOutlined, HistoryOutlined, FileTextOutlined, EyeOutlined, RollbackOutlined, CaretRightOutlined, CaretDownOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import FlowCanvasViewer from '../../components/Canvas/FlowCanvasViewer'
 import axios from 'axios'
 
@@ -36,6 +36,19 @@ export default function RuleTypeMgr() {
   const [currentVersionRule, setCurrentVersionRule] = useState(null)
   const [versionPreviewModalOpen, setVersionPreviewModalOpen] = useState(false)
   const [currentVersion, setCurrentVersion] = useState(null)
+
+  // 规则导入
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [importTypeId, setImportTypeId] = useState(null)
+  const [importFile, setImportFile] = useState(null)
+  const [importLoading, setImportLoading] = useState(false)
+  const [importStep, setImportStep] = useState('upload') // 'upload' | 'preview'
+  const [importPreviews, setImportPreviews] = useState([])
+  const [importSelectedCodes, setImportSelectedCodes] = useState([])
+  const [importPreviewLoading, setImportPreviewLoading] = useState(false)
+
+  // 规则列表多选
+  const [selectedRuleKeys, setSelectedRuleKeys] = useState([])
 
   const fetchRuleTypes = async () => {
     try {
@@ -169,6 +182,80 @@ export default function RuleTypeMgr() {
 
   const handlePageEditRule = (rule) => {
     window.location.href = `/?type=${rule.ruleTypeId}&ruleId=${rule.id}&page=pageEditor`
+  }
+
+  const handleImportPreview = async () => {
+    if (!importFile) {
+      message.warning('请选择Excel文件')
+      return
+    }
+    setImportPreviewLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+      const res = await axios.post(`${RULE_API}/import-preview`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setImportPreviews(res.data)
+      setImportSelectedCodes(res.data.map(r => r.code))
+      setImportStep('preview')
+    } catch (err) {
+      message.error('预览失败: ' + (err.response?.data?.message || err.message))
+    }
+    setImportPreviewLoading(false)
+  }
+
+  const handleImportConfirm = async () => {
+    if (!importTypeId) {
+      message.warning('请选择规则类型')
+      return
+    }
+    if (importSelectedCodes.length === 0) {
+      message.warning('请至少选择一条规则导入')
+      return
+    }
+    setImportLoading(true)
+    try {
+      const res = await axios.post(`${RULE_API}/import-confirm`, {
+        previews: importPreviews,
+        selectedCodes: importSelectedCodes,
+        ruleTypeId: importTypeId
+      })
+      message.success(`成功导入 ${res.data.length} 条规则`)
+      setImportModalOpen(false)
+      setImportStep('upload')
+      setImportFile(null)
+      setImportPreviews([])
+      setImportSelectedCodes([])
+      fetchRules(selectedTypeId, subTypes[selectedTypeId]?.map(c => c.id))
+    } catch (err) {
+      message.error('导入失败: ' + (err.response?.data?.message || err.message))
+    }
+    setImportLoading(false)
+  }
+
+  const handleExportRules = async () => {
+    if (selectedRuleKeys.length === 0) {
+      message.warning('请先选择要导出的规则')
+      return
+    }
+    try {
+      const res = await axios.post(`${RULE_API}/export`, selectedRuleKeys, {
+        responseType: 'blob'
+      })
+      const blob = new Blob([res.data], { type: 'application/octet-stream' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `rules-export-${selectedType?.code || 'all'}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      message.success('导出成功')
+    } catch (err) {
+      message.error('导出失败: ' + (err.response?.data?.message || err.message))
+    }
   }
 
   // 执行日志
@@ -397,10 +484,28 @@ export default function RuleTypeMgr() {
                     typeForm.setFieldsValue(selectedType)
                     setTypeModalOpen(true)
                   }}>编辑类型</Button>
+                  <Button icon={<UploadOutlined />} onClick={() => {
+                    setImportTypeId(selectedTypeId)
+                    setImportFile(null)
+                    setImportModalOpen(true)
+                  }}>导入规则</Button>
+                  <Button icon={<DownloadOutlined />} onClick={handleExportRules} disabled={selectedRuleKeys.length === 0}>
+                    导出选中 ({selectedRuleKeys.length})
+                  </Button>
                   <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateRule}>新建规则</Button>
                 </div>
               </div>
-              <Table rowKey="id" columns={ruleColumns} dataSource={rules} loading={loading} bordered />
+              <Table
+                rowKey="id"
+                columns={ruleColumns}
+                dataSource={rules}
+                loading={loading}
+                bordered
+                rowSelection={{
+                  selectedRowKeys: selectedRuleKeys,
+                  onChange: setSelectedRuleKeys,
+                }}
+              />
             </div>
           ) : (
             <Empty description="请选择左侧规则类型" />
@@ -585,6 +690,105 @@ export default function RuleTypeMgr() {
             edges={currentVersion?.canvasData ? JSON.parse(currentVersion.canvasData).edges : []}
           />
         </div>
+      </Modal>
+
+      {/* 规则导入 Modal */}
+      <Modal
+        title={importStep === 'upload' ? '导入规则 - 上传文件' : `导入规则 - 预览匹配结果 (${importPreviews.length}条)`}
+        open={importModalOpen}
+        onCancel={() => {
+          setImportModalOpen(false)
+          setImportStep('upload')
+          setImportFile(null)
+          setImportPreviews([])
+          setImportSelectedCodes([])
+        }}
+        footer={
+          importStep === 'upload' ? (
+            <>
+              <Button onClick={() => { setImportModalOpen(false); setImportStep('upload'); setImportFile(null); }}>取消</Button>
+              <Button type="primary" onClick={handleImportPreview} loading={importPreviewLoading}>预览匹配结果</Button>
+            </>
+          ) : (
+            <>
+              <Button onClick={() => { setImportStep('upload'); setImportSelectedCodes([]); }}>返回上传</Button>
+              <Button type="primary" onClick={handleImportConfirm} loading={importLoading}>
+                确认导入 ({importSelectedCodes.length}条)
+              </Button>
+            </>
+          )
+        }
+        width={importStep === 'preview' ? 900 : 520}
+      >
+        {importStep === 'upload' ? (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>
+              上传质控指标Excel，系统将自动匹配模板并生成规则画布。
+              <br/>
+              Excel格式：第1列=模板分类，第2列=质控指标，第3列=实现方法
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>规则类型：</label>
+              <Select
+                style={{ width: '100%' }}
+                value={importTypeId}
+                onChange={setImportTypeId}
+                placeholder="选择规则类型"
+              >
+                {ruleTypes.map(rt => (
+                  <Select.Option key={rt.id} value={rt.id}>{rt.name}</Select.Option>
+                ))}
+              </Select>
+            </div>
+            <Upload
+              beforeUpload={(file) => {
+                setImportFile(file)
+                return false
+              }}
+              onRemove={() => setImportFile(null)}
+              maxCount={1}
+              accept=".xlsx,.xls"
+            >
+              <Button icon={<UploadOutlined />}>选择Excel文件</Button>
+            </Upload>
+          </div>
+        ) : (
+          <div>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#666', fontSize: 13 }}>
+                勾选要导入的规则，系统将自动为每条规则生成画布。
+              </span>
+              <Select
+                style={{ width: 200 }}
+                value={importTypeId}
+                onChange={setImportTypeId}
+                placeholder="选择规则类型"
+              >
+                {ruleTypes.map(rt => (
+                  <Select.Option key={rt.id} value={rt.id}>{rt.name}</Select.Option>
+                ))}
+              </Select>
+            </div>
+            <Table
+              rowKey="code"
+              dataSource={importPreviews}
+              pagination={false}
+              scroll={{ y: 400 }}
+              rowSelection={{
+                selectedRowKeys: importSelectedCodes,
+                onChange: setImportSelectedCodes,
+              }}
+              columns={[
+                { title: '规则编码', dataIndex: 'code', width: 100 },
+                { title: '规则名称', dataIndex: 'name', width: 180 },
+                { title: '字段', dataIndex: 'field', width: 100 },
+                { title: '操作符', dataIndex: 'operator', width: 100 },
+                { title: '条件值', dataIndex: 'value', width: 120, render: v => v || '-' },
+                { title: '来源指标', dataIndex: 'sourceIndicator', ellipsis: true },
+              ]}
+            />
+          </div>
+        )}
       </Modal>
     </Layout>
   )

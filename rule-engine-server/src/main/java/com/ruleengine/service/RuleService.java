@@ -80,6 +80,7 @@ public class RuleService {
             throw new RuntimeException("已发布的规则不能直接修改，请先创建新版本");
         }
         validateRuleType(rule);
+        existing.setCode(rule.getCode());
         existing.setName(rule.getName());
         existing.setRemark(rule.getRemark());
         existing.setRuleTypeId(rule.getRuleTypeId());

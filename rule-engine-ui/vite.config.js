@@ -9,6 +9,11 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8082',
         changeOrigin: true
+      },
+      '/pipeline-api': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/pipeline-api/, '/api')
       }
     }
   },
@@ -18,6 +23,11 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8082',
         changeOrigin: true
+      },
+      '/pipeline-api': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/pipeline-api/, '/api')
       }
     }
   }

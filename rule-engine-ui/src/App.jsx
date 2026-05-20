@@ -9,19 +9,22 @@ import ConditionModelMgr from './pages/ConditionModelMgr'
 import ResultModelMgr from './pages/ResultModelMgr'
 import RuleExecute from './pages/RuleExecute'
 import SystemMenu from './pages/SystemMenu'
-import RecycleBin from './pages/RecycleBin'
+import PipelineDesigner from './pages/PipelineDesigner'
+import ClinicalPathwayMgr from './pages/ClinicalPathwayMgr'
 
 const NAV_ITEMS = [
   { key: 'types', label: '规则类型' },
   { key: 'execute', label: '规则执行' },
-  { key: 'recycle', label: '回收站' },
+  { key: 'pipeline', label: '流程编排' },
+  { key: 'pathway', label: '临床路径' },
   { key: 'system', label: '系统管理' },
 ]
 
 const PAGE_NAME_MAP = {
   'types': '规则类型',
   'execute': '规则执行',
-  'recycle': '回收站',
+  'pipeline': '流程编排',
+  'pathway': '临床路径',
   'system': '系统管理',
   'editor': '规则编辑器',
 }
@@ -44,7 +47,8 @@ function App() {
         'types': 'types',
         'system': 'system',
         'execute': 'execute',
-        'recycle': 'recycle',
+        'pipeline': 'pipeline',
+        'pathway': 'pathway',
       }
       if (pageMap[page]) {
         setCurrentPage(pageMap[page])
@@ -69,7 +73,8 @@ function App() {
       case 'models': return <ConditionModelMgr />
       case 'results': return <ResultModelMgr />
       case 'execute': return <RuleExecute />
-      case 'recycle': return <RecycleBin />
+      case 'pipeline': return <PipelineDesigner />
+      case 'pathway': return <ClinicalPathwayMgr />
       case 'system': return <SystemMenu />
       default: return <RuleTypeMgr />
     }

@@ -125,6 +125,136 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
+    private void ensureProcessDefinitionTableExists() {
+        try {
+            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM process_definition", Integer.class);
+        } catch (Exception e) {
+            log.info("Creating missing 'process_definition' table...");
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS process_definition (" +
+                "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+                "  code VARCHAR(64) NOT NULL UNIQUE," +
+                "  name VARCHAR(128) NOT NULL," +
+                "  description VARCHAR(512)," +
+                "  version VARCHAR(16) DEFAULT '1.0.0'," +
+                "  status VARCHAR(16) NOT NULL DEFAULT 'DRAFT'," +
+                "  canvas_data LONGTEXT," +
+                "  node_configs LONGTEXT," +
+                "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                "  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                "  deleted TINYINT(1) DEFAULT 0," +
+                "  deleted_at DATETIME" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+            log.info("'process_definition' table created.");
+        }
+    }
+
+    private void ensureProcessInstanceTableExists() {
+        try {
+            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM process_instance", Integer.class);
+        } catch (Exception e) {
+            log.info("Creating missing 'process_instance' table...");
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS process_instance (" +
+                "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+                "  process_def_id BIGINT NOT NULL," +
+                "  process_code VARCHAR(64) NOT NULL," +
+                "  business_key VARCHAR(128)," +
+                "  status VARCHAR(16) NOT NULL DEFAULT 'RUNNING'," +
+                "  variables LONGTEXT," +
+                "  current_node_ids VARCHAR(512)," +
+                "  execution_log LONGTEXT," +
+                "  error_message VARCHAR(1024)," +
+                "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                "  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                "  end_time DATETIME," +
+                "  INDEX idx_process_def_id (process_def_id)," +
+                "  INDEX idx_business_key (business_key)," +
+                "  INDEX idx_status (status)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+            log.info("'process_instance' table created.");
+        }
+    }
+
+    private void ensureClinicalPathwayTablesExist() {
+        try {
+            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinical_pathway", Integer.class);
+        } catch (Exception e) {
+            log.info("Creating clinical_pathway tables...");
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS clinical_pathway (" +
+                "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+                "  code VARCHAR(64) NOT NULL UNIQUE," +
+                "  name VARCHAR(128) NOT NULL," +
+                "  description VARCHAR(512)," +
+                "  version VARCHAR(16) DEFAULT '1.0.0'," +
+                "  status VARCHAR(16) NOT NULL DEFAULT 'DRAFT'," +
+                "  indication VARCHAR(512)," +
+                "  admission_rule_code VARCHAR(64)," +
+                "  process_def_id BIGINT," +
+                "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                "  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                "  deleted TINYINT(1) DEFAULT 0," +
+                "  deleted_at DATETIME" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS pathway_stage (" +
+                "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+                "  pathway_id BIGINT NOT NULL," +
+                "  name VARCHAR(128) NOT NULL," +
+                "  code VARCHAR(64)," +
+                "  sort_order INT DEFAULT 0," +
+                "  description VARCHAR(512)," +
+                "  exit_rule_code VARCHAR(64)," +
+                "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                "  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                "  INDEX idx_pathway_id (pathway_id)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS pathway_task (" +
+                "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+                "  stage_id BIGINT NOT NULL," +
+                "  name VARCHAR(128) NOT NULL," +
+                "  code VARCHAR(64)," +
+                "  task_type VARCHAR(16) NOT NULL," +
+                "  process_node_id VARCHAR(64)," +
+                "  config LONGTEXT," +
+                "  required TINYINT(1) DEFAULT 1," +
+                "  sort_order INT DEFAULT 0," +
+                "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                "  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                "  INDEX idx_stage_id (stage_id)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS pathway_instance (" +
+                "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+                "  pathway_id BIGINT NOT NULL," +
+                "  patient_id VARCHAR(64)," +
+                "  visit_id VARCHAR(64)," +
+                "  business_key VARCHAR(128)," +
+                "  status VARCHAR(16) NOT NULL DEFAULT 'ADMISSION_PENDING'," +
+                "  current_stage_id BIGINT," +
+                "  current_stage_entry_time DATETIME," +
+                "  variables LONGTEXT," +
+                "  execution_log LONGTEXT," +
+                "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                "  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                "  end_time DATETIME," +
+                "  INDEX idx_pathway_id (pathway_id)," +
+                "  INDEX idx_patient_id (patient_id)," +
+                "  INDEX idx_business_key (business_key)," +
+                "  INDEX idx_status (status)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+            log.info("Clinical pathway tables created.");
+        }
+    }
+
     private void migrateDataElementIds() {
         // 反向迁移：把 condition_model_data_elements 中的数据复制回 condition_model.data_element_id
         try {
@@ -152,6 +282,9 @@ public class DataInitializer implements CommandLineRunner {
         ensureExecutionLogTableExists();
         ensureRuleVersionTableExists();
         ensureAccessLogTableExists();
+        ensureProcessDefinitionTableExists();
+        ensureProcessInstanceTableExists();
+        ensureClinicalPathwayTablesExist();
         migrateDataElementIds();
         log.info("开始检查并初始化基础数据...");
 

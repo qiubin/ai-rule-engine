@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Button, Card, Select, message, Space, Tag, Tooltip } from 'antd'
+import { Button, Card, Select, message, Space, Tag, Tooltip, Modal, Form, Input } from 'antd'
 import {
   PlusOutlined,
   SaveOutlined,
@@ -7,6 +7,7 @@ import {
   CloudUploadOutlined,
   RollbackOutlined,
   PartitionOutlined,
+  EditOutlined,
 } from '@ant-design/icons'
 import axios from 'axios'
 import { useConditionData } from '../../hooks/useConditionData'
@@ -38,12 +39,23 @@ export default function RulePageEditor() {
   const [canvasData, setCanvasData] = useState({ nodes: [], edges: [] })
   const [parsing, setParsing] = useState(false)
   const [parseError, setParseError] = useState('')
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editForm] = Form.useForm()
+  const [ruleTypes, setRuleTypes] = useState([])
+
+  const fetchRuleTypes = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/rule-types`)
+      setRuleTypes(res.data)
+    } catch (e) {}
+  }
 
   // 加载规则数据和字典数据
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const rId = params.get('ruleId')
     loadAll()
+    fetchRuleTypes()
     if (rId) {
       setRuleId(Number(rId))
       loadRule(Number(rId))
@@ -216,6 +228,23 @@ export default function RulePageEditor() {
     window.location.href = '/'
   }
 
+  const handleEditRule = async (values) => {
+    if (!currentRule) return
+    try {
+      const res = await axios.put(`${API_BASE}/rules/${currentRule.id}`, {
+        code: values.code,
+        name: values.name,
+        remark: values.remark,
+        ruleTypeId: values.ruleTypeId
+      })
+      setCurrentRule(res.data)
+      setEditModalOpen(false)
+      message.success('规则信息更新成功')
+    } catch (err) {
+      message.error('更新失败: ' + (err.response?.data?.message || err.message))
+    }
+  }
+
   // 计算条件字段（用于结果内容的变量提示）
   const conditionFields = React.useMemo(() => {
     return conditions
@@ -243,6 +272,15 @@ export default function RulePageEditor() {
                 <Tag color={currentRule.status === 'PUBLISHED' ? 'green' : currentRule.status === 'DRAFT' ? 'orange' : 'default'} style={{ marginLeft: 8 }}>
                   {currentRule.status === 'PUBLISHED' ? '已发布' : currentRule.status === 'DRAFT' ? '草稿' : '已停用'}
                 </Tag>
+                <Button size="small" icon={<EditOutlined />} style={{ marginLeft: 8 }} onClick={() => {
+                  editForm.setFieldsValue({
+                    code: currentRule.code,
+                    name: currentRule.name,
+                    remark: currentRule.remark,
+                    ruleTypeId: currentRule.ruleTypeId
+                  })
+                  setEditModalOpen(true)
+                }}>编辑信息</Button>
               </span>
             )}
           </h2>
@@ -363,6 +401,27 @@ export default function RulePageEditor() {
           </Card>
         </div>
       </div>
+
+      <Modal title="编辑规则信息" open={editModalOpen} onCancel={() => setEditModalOpen(false)} onOk={() => editForm.submit()}>
+        <Form form={editForm} onFinish={handleEditRule} layout="vertical">
+          <Form.Item name="code" label="规则编码" rules={[{ required: true }]}>
+            <Input placeholder="如：AGE_CHECK_001" />
+          </Form.Item>
+          <Form.Item name="name" label="规则名称" rules={[{ required: true }]}>
+            <Input placeholder="如：主诉持续时间" />
+          </Form.Item>
+          <Form.Item name="remark" label="备注">
+            <Input placeholder="实现方法关键词 + 对应计算符 + 配置要点" />
+          </Form.Item>
+          <Form.Item name="ruleTypeId" label="规则类型" rules={[{ required: true, message: '必须选择规则类型' }]}>
+            <Select placeholder="选择规则类型">
+              {ruleTypes.map(rt => (
+                <Select.Option key={rt.id} value={rt.id}>{rt.name}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }

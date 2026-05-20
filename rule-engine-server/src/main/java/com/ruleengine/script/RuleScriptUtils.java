@@ -28,6 +28,17 @@ import java.util.regex.Pattern;
 public class RuleScriptUtils {
 
     /**
+     * 0. 在集合中：判断字段值是否精确匹配给定集合中的某一项。
+     * 集合通过逗号/顿号/分号分隔，如 "A,B,C"。
+     */
+    public static boolean inSet(Object value, String setStr) {
+        if (value == null || !StringUtils.hasText(setStr)) return false;
+        String str = String.valueOf(value).trim();
+        List<String> items = parseKeywordList(setStr);
+        return items.contains(str);
+    }
+
+    /**
      * 1. 正则匹配：基于输入的1个字符串，判断是否命中，命中时返回TRUE。
      * 应用场景：诱因正则匹配，描述不清返回TRUE；缺症状时间描述，描述不清返回TRUE；
      *

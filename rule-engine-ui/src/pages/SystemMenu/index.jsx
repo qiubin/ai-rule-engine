@@ -7,6 +7,8 @@ import DataElementMgr from '../DataElementMgr'
 import AdapterConfigPage from '../AdapterConfigPage'
 import DbConfigPage from '../DbConfigPage'
 import AccessLogMgr from '../AccessLogMgr'
+import RecycleBin from '../RecycleBin'
+import SystemHelp from '../SystemHelp'
 
 const TABS = [
   { key: 'models', label: '条件管理' },
@@ -16,6 +18,8 @@ const TABS = [
   { key: 'adapter', label: '适配器配置' },
   { key: 'db', label: '数据库配置' },
   { key: 'accessLogs', label: '访问日志' },
+  { key: 'recycle', label: '回收站' },
+  { key: 'help', label: '架构说明' },
 ]
 
 function recordAccess(pageName) {
@@ -43,6 +47,8 @@ export default function SystemMenu() {
       case 'adapter': return <AdapterConfigPage />
       case 'db': return <DbConfigPage />
       case 'accessLogs': return <AccessLogMgr />
+      case 'recycle': return <RecycleBin />
+      case 'help': return <SystemHelp />
       default: return <ConditionModelMgr />
     }
   }

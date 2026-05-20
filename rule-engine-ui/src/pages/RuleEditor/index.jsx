@@ -10,7 +10,7 @@ import ReactFlow, {
   Panel,
 } from 'reactflow'
 import { Button, message, Modal, Input, Select, Form, Tag } from 'antd'
-import { SaveOutlined, PlayCircleOutlined, PlusOutlined, DeleteOutlined, ArrowLeftOutlined, ColumnWidthOutlined, CloudUploadOutlined, RollbackOutlined, StopOutlined } from '@ant-design/icons'
+import { SaveOutlined, PlayCircleOutlined, PlusOutlined, DeleteOutlined, ArrowLeftOutlined, ColumnWidthOutlined, CloudUploadOutlined, RollbackOutlined, StopOutlined, EditOutlined } from '@ant-design/icons'
 import dagre from '@dagrejs/dagre'
 import { nodeTypes } from '../../components/Nodes'
 import ConfigPanel from '../../components/ConfigPanel'
@@ -40,6 +40,8 @@ function FlowCanvas() {
   const [execForm] = Form.useForm()
   const [execFields, setExecFields] = useState([])
   const [executing, setExecuting] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editForm] = Form.useForm()
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -230,6 +232,23 @@ function FlowCanvas() {
       await doSaveCanvas(res.data.id)
     } catch (err) {
       message.error('创建失败: ' + (err.response?.data?.message || err.message))
+    }
+  }
+
+  const handleEditRule = async (values) => {
+    if (!currentRule) return
+    try {
+      const res = await axios.put(`${API_BASE}/rules/${currentRule.id}`, {
+        code: values.code,
+        name: values.name,
+        remark: values.remark,
+        ruleTypeId: values.ruleTypeId
+      })
+      setCurrentRule(res.data)
+      setEditModalOpen(false)
+      message.success('规则信息更新成功')
+    } catch (err) {
+      message.error('更新失败: ' + (err.response?.data?.message || err.message))
     }
   }
 
@@ -504,6 +523,15 @@ function FlowCanvas() {
                   <span style={{ background: '#f0f0f0', padding: '4px 12px', borderRadius: 4, fontSize: 13 }}>
                     当前规则: {currentRule.name} ({currentRule.code})
                   </span>
+                  <Button icon={<EditOutlined />} onClick={() => {
+                    editForm.setFieldsValue({
+                      code: currentRule.code,
+                      name: currentRule.name,
+                      remark: currentRule.remark,
+                      ruleTypeId: currentRule.ruleTypeId
+                    })
+                    setEditModalOpen(true)
+                  }}>编辑信息</Button>
                   <Tag color={
                     currentRule.status === 'PUBLISHED' ? 'success' :
                     currentRule.status === 'DISABLED' ? 'error' : 'processing'
@@ -588,6 +616,27 @@ function FlowCanvas() {
       <Modal title="创建规则" open={saveModalOpen} onCancel={() => setSaveModalOpen(false)} onOk={() => ruleForm.submit()}>
         <Form form={ruleForm} onFinish={handleCreateRule} layout="vertical"
           initialValues={{ ruleTypeId: urlRuleTypeId || undefined }}>
+          <Form.Item name="code" label="规则编码" rules={[{ required: true }]}>
+            <Input placeholder="如：AGE_CHECK_001" />
+          </Form.Item>
+          <Form.Item name="name" label="规则名称" rules={[{ required: true }]}>
+            <Input placeholder="如：主诉持续时间" />
+          </Form.Item>
+          <Form.Item name="remark" label="备注">
+            <Input placeholder="实现方法关键词 + 对应计算符 + 配置要点" />
+          </Form.Item>
+          <Form.Item name="ruleTypeId" label="规则类型" rules={[{ required: true, message: '必须选择规则类型' }]}>
+            <Select placeholder="选择规则类型">
+              {ruleTypes.map(rt => (
+                <Select.Option key={rt.id} value={rt.id}>{rt.name}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal title="编辑规则信息" open={editModalOpen} onCancel={() => setEditModalOpen(false)} onOk={() => editForm.submit()}>
+        <Form form={editForm} onFinish={handleEditRule} layout="vertical">
           <Form.Item name="code" label="规则编码" rules={[{ required: true }]}>
             <Input placeholder="如：AGE_CHECK_001" />
           </Form.Item>
