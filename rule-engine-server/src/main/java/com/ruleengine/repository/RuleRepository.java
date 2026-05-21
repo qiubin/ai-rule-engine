@@ -24,4 +24,6 @@ public interface RuleRepository extends JpaRepository<Rule, Long> {
     List<Rule> findByDeletedFalseAndRuleTypeId(Long ruleTypeId);
     List<Rule> findByDeletedFalseAndRuleTypeIdIn(List<Long> ruleTypeIds);
     long countByDeletedFalseAndRuleTypeId(Long ruleTypeId);
+
+    List<Rule> findByRuleTypeIdAndStatusAndDeletedFalse(Long ruleTypeId, RuleStatus status);
 }
