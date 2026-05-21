@@ -7,8 +7,7 @@ public enum ProcessNodeType {
     SERVICE_TASK, // 服务任务（调用Spring Bean / HTTP）
     SCRIPT_TASK,  // 脚本任务（Groovy/SpEL）
     DELAY_TASK,   // 延时任务
-    DIFY_TASK,    // DIFY任务
-    LLM_TASK,     // 大模型任务
+    AGENT_TASK,   // 智能体任务（Dify / 大模型）
     HUMAN_TASK,   // 人工任务
     CONDITION     // 条件分支
 }

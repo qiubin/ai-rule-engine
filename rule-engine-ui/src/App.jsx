@@ -11,12 +11,14 @@ import RuleExecute from './pages/RuleExecute'
 import SystemMenu from './pages/SystemMenu'
 import PipelineDesigner from './pages/PipelineDesigner'
 import ClinicalPathwayMgr from './pages/ClinicalPathwayMgr'
+import DecisionTest from './pages/DecisionTest'
 
 const NAV_ITEMS = [
   { key: 'types', label: '规则类型' },
   { key: 'execute', label: '规则执行' },
   { key: 'pipeline', label: '流程编排' },
-  { key: 'pathway', label: '临床路径' },
+  { key: 'pathway', label: '临床大路径' },
+  { key: 'decision', label: '决策测试台' },
   { key: 'system', label: '系统管理' },
 ]
 
@@ -24,7 +26,8 @@ const PAGE_NAME_MAP = {
   'types': '规则类型',
   'execute': '规则执行',
   'pipeline': '流程编排',
-  'pathway': '临床路径',
+  'pathway': '临床大路径',
+  'decision': '决策测试台',
   'system': '系统管理',
   'editor': '规则编辑器',
 }
@@ -49,6 +52,7 @@ function App() {
         'execute': 'execute',
         'pipeline': 'pipeline',
         'pathway': 'pathway',
+        'decision': 'decision',
       }
       if (pageMap[page]) {
         setCurrentPage(pageMap[page])
@@ -75,6 +79,7 @@ function App() {
       case 'execute': return <RuleExecute />
       case 'pipeline': return <PipelineDesigner />
       case 'pathway': return <ClinicalPathwayMgr />
+      case 'decision': return <DecisionTest />
       case 'system': return <SystemMenu />
       default: return <RuleTypeMgr />
     }

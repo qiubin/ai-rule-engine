@@ -97,19 +97,10 @@ const DelayTaskNode = memo(({ data }) => (
   </div>
 ));
 
-const DifyTaskNode = memo(({ data }) => (
-  <div style={{ padding: '10px', borderRadius: '8px', background: '#fff', border: '2px solid #52c41a', textAlign: 'center', minWidth: 150, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+const AgentTaskNode = memo(({ data }) => (
+  <div style={{ padding: '10px', borderRadius: '8px', background: '#fff', border: '2px solid #722ed1', textAlign: 'center', minWidth: 150, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
     <Handle type="target" position={Position.Top} />
-    <div style={{ fontSize: '12px', color: '#52c41a', marginBottom: '4px' }}><RobotOutlined /> DIFY任务</div>
-    <div style={{ fontWeight: 'bold' }}>{data.label}</div>
-    <Handle type="source" position={Position.Bottom} />
-  </div>
-));
-
-const LlmTaskNode = memo(({ data }) => (
-  <div style={{ padding: '10px', borderRadius: '8px', background: '#fff', border: '2px solid #13c2c2', textAlign: 'center', minWidth: 150, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-    <Handle type="target" position={Position.Top} />
-    <div style={{ fontSize: '12px', color: '#13c2c2', marginBottom: '4px' }}><BulbOutlined /> 大模型任务</div>
+    <div style={{ fontSize: '12px', color: '#722ed1', marginBottom: '4px' }}><RobotOutlined /> 智能体任务</div>
     <div style={{ fontWeight: 'bold' }}>{data.label}</div>
     <Handle type="source" position={Position.Bottom} />
   </div>
@@ -132,8 +123,7 @@ const nodeTypes = {
   service_task: ServiceTaskNode,
   script_task: ScriptTaskNode,
   delay_task: DelayTaskNode,
-  dify_task: DifyTaskNode,
-  llm_task: LlmTaskNode,
+  agent_task: AgentTaskNode,
   human_task: HumanTaskNode,
 };
 
@@ -225,8 +215,7 @@ const PipelineDesigner = () => {
       service_task: '服务任务',
       script_task: '脚本任务',
       delay_task: '延时任务',
-      dify_task: 'DIFY任务',
-      llm_task: '大模型任务',
+      agent_task: '智能体任务',
       human_task: '人工任务',
     };
     const newNode = {
@@ -498,8 +487,7 @@ const PipelineDesigner = () => {
       service_task: '配置服务任务',
       script_task: '配置脚本任务',
       delay_task: '配置延时任务',
-      dify_task: '配置DIFY任务',
-      llm_task: '配置大模型任务',
+      agent_task: '配置智能体任务',
       human_task: '配置人工任务',
     };
     return typeMap[currentNode?.type] || '配置节点';
@@ -525,8 +513,7 @@ const PipelineDesigner = () => {
              <Button block icon={<ToolOutlined />} onClick={() => addNode('service_task')} style={{ color: '#1890ff' }}>服务任务</Button>
              <Button block icon={<CodeOutlined />} onClick={() => addNode('script_task')} style={{ color: '#722ed1' }}>脚本任务</Button>
              <Button block icon={<ClockCircleOutlined />} onClick={() => addNode('delay_task')} style={{ color: '#fa8c16' }}>延时任务</Button>
-             <Button block icon={<RobotOutlined />} onClick={() => addNode('dify_task')} style={{ color: '#52c41a' }}>DIFY任务</Button>
-             <Button block icon={<BulbOutlined />} onClick={() => addNode('llm_task')} style={{ color: '#13c2c2' }}>大模型任务</Button>
+             <Button block icon={<RobotOutlined />} onClick={() => addNode('agent_task')} style={{ color: '#722ed1' }}>智能体任务</Button>
              <Button block icon={<UserOutlined />} onClick={() => addNode('human_task')} style={{ color: '#eb2f96' }}>人工任务</Button>
           </Space>
         </div>
@@ -767,52 +754,54 @@ const PipelineDesigner = () => {
                 </div>
               </>
             )}
-            {currentNode?.type === 'dify_task' && (
+            {currentNode?.type === 'agent_task' && (
               <>
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8 }}>Workflow ID:</label>
-                  <Input value={nodeConfig.workflowId || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, workflowId: e.target.value })} />
+                  <label style={{ display: 'block', marginBottom: 8 }}>智能体类型:</label>
+                  <Radio.Group value={nodeConfig.agentType || 'llm'} onChange={(e) => setNodeConfig({ ...nodeConfig, agentType: e.target.value })}>
+                    <Radio value="llm">大模型 (LLM)</Radio>
+                    <Radio value="dify">Dify 工作流</Radio>
+                  </Radio.Group>
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', marginBottom: 8 }}>Base URL:</label>
-                  <Input value={nodeConfig.baseUrl || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, baseUrl: e.target.value })} placeholder="https://api.dify.ai/v1" />
+                  <Input value={nodeConfig.baseUrl || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, baseUrl: e.target.value })} placeholder={nodeConfig.agentType === 'dify' ? 'https://api.dify.ai/v1' : 'https://api.openai.com/v1'} />
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', marginBottom: 8 }}>API Key:</label>
                   <Input.Password value={nodeConfig.apiKey || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, apiKey: e.target.value })} />
                 </div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8 }}>Inputs (JSON):</label>
-                  <Input.TextArea rows={4} value={nodeConfig.inputs || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, inputs: e.target.value })} placeholder='{"key": "value"}' />
-                </div>
-              </>
-            )}
-            {currentNode?.type === 'llm_task' && (
-              <>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8 }}>模型:</label>
-                  <Input value={nodeConfig.model || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, model: e.target.value })} placeholder="例如: gpt-4" />
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8 }}>Base URL:</label>
-                  <Input value={nodeConfig.baseUrl || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, baseUrl: e.target.value })} />
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8 }}>API Key:</label>
-                  <Input.Password value={nodeConfig.apiKey || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, apiKey: e.target.value })} />
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8 }}>Prompt:</label>
-                  <Input.TextArea rows={6} value={nodeConfig.prompt || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, prompt: e.target.value })} />
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8 }}>Temperature:</label>
-                  <InputNumber style={{ width: '100%' }} min={0} max={2} step={0.1} value={nodeConfig.temperature || 0.7} onChange={(v) => setNodeConfig({ ...nodeConfig, temperature: v })} />
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8 }}>Max Tokens:</label>
-                  <InputNumber style={{ width: '100%' }} min={1} value={nodeConfig.maxTokens || 2048} onChange={(v) => setNodeConfig({ ...nodeConfig, maxTokens: v })} />
-                </div>
+                {nodeConfig.agentType === 'dify' ? (
+                  <>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', marginBottom: 8 }}>Workflow ID:</label>
+                      <Input value={nodeConfig.workflowId || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, workflowId: e.target.value })} />
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', marginBottom: 8 }}>Inputs (JSON):</label>
+                      <Input.TextArea rows={4} value={nodeConfig.inputs || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, inputs: e.target.value })} placeholder='{"key": "value"}' />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', marginBottom: 8 }}>模型:</label>
+                      <Input value={nodeConfig.model || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, model: e.target.value })} placeholder="例如: gpt-4" />
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', marginBottom: 8 }}>Prompt:</label>
+                      <Input.TextArea rows={6} value={nodeConfig.prompt || ''} onChange={(e) => setNodeConfig({ ...nodeConfig, prompt: e.target.value })} />
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', marginBottom: 8 }}>Temperature:</label>
+                      <InputNumber style={{ width: '100%' }} min={0} max={2} step={0.1} value={nodeConfig.temperature || 0.7} onChange={(v) => setNodeConfig({ ...nodeConfig, temperature: v })} />
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', marginBottom: 8 }}>Max Tokens:</label>
+                      <InputNumber style={{ width: '100%' }} min={1} value={nodeConfig.maxTokens || 2048} onChange={(v) => setNodeConfig({ ...nodeConfig, maxTokens: v })} />
+                    </div>
+                  </>
+                )}
               </>
             )}
             {currentNode?.type === 'human_task' && (

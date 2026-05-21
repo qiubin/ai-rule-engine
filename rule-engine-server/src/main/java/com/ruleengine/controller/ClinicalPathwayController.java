@@ -3,6 +3,8 @@ package com.ruleengine.controller;
 import com.ruleengine.domain.ClinicalPathway;
 import com.ruleengine.domain.PathwayStage;
 import com.ruleengine.domain.PathwayTask;
+import com.ruleengine.dto.ClinicalContext;
+import com.ruleengine.dto.DecisionResponse;
 import com.ruleengine.service.ClinicalPathwayService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -66,5 +68,23 @@ public class ClinicalPathwayController {
             @PathVariable Long id,
             @RequestBody List<PathwayTask> tasks) {
         return ResponseEntity.ok(clinicalPathwayService.saveTasks(id, tasks));
+    }
+
+    /**
+     * 执行决策路径（串联 ClinicalContext → DecisionPathEngine → DecisionResponse）
+     */
+    @PostMapping("/{id}/execute")
+    public ResponseEntity<DecisionResponse> execute(
+            @PathVariable Long id,
+            @RequestBody ClinicalContext context) {
+        return ResponseEntity.ok(clinicalPathwayService.executeDecisionPath(id, context));
+    }
+
+    /**
+     * 查询已发布的路径列表（供测试界面选择）
+     */
+    @GetMapping("/published")
+    public ResponseEntity<List<ClinicalPathway>> listPublished() {
+        return ResponseEntity.ok(clinicalPathwayService.findAllPublished());
     }
 }

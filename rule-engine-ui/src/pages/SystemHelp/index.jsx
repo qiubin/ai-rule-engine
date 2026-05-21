@@ -23,7 +23,7 @@ const styles = {
 }
 
 const layers = [
-  { label: '临床路径（Clinical Pathway）', desc: '业务管理层 — 阶段 + 任务', color: '#e6f7ff', border: '#91d5ff' },
+  { label: '临床大路径（Clinical Pathway）', desc: '业务管理层 — 阶段 + 任务', color: '#e6f7ff', border: '#91d5ff' },
   { label: '流程编排（Process DAG）', desc: '可执行工作流层 — 画布节点 + 连线', color: '#f6ffed', border: '#b7eb8f' },
   { label: '规则引擎（Drools DRL）', desc: '原子能力层 — 条件 + 动作', color: '#fff7e6', border: '#ffd591' },
 ]
@@ -33,7 +33,7 @@ export default function SystemHelp() {
     <div style={styles.container}>
       <div style={styles.paper}>
         <h1 style={styles.h1}>系统架构说明</h1>
-        <p style={{ ...styles.p, color: '#888', marginBottom: 24 }}>规则引擎 · 流程编排 · 临床路径 — 三层架构关系</p>
+        <p style={{ ...styles.p, color: '#888', marginBottom: 24 }}>规则引擎 · 流程编排 · 临床大路径 — 三层架构关系</p>
 
         <h2 style={styles.h2}>三层架构总览</h2>
         <p style={styles.p}>
@@ -83,8 +83,7 @@ export default function SystemHelp() {
               ['ServiceStepExecutor', 'SERVICE_TASK', 'HTTP 调用或 Spring Bean 调用'],
               ['ScriptStepExecutor', 'SCRIPT_TASK', '执行 Groovy/SpEL 脚本'],
               ['DelayStepExecutor', 'DELAY_TASK', '等待指定时间'],
-              ['DifyStepExecutor', 'DIFY_TASK', '调用 Dify AI 工作流'],
-              ['LlmStepExecutor', 'LLM_TASK', '调用大语言模型'],
+              ['AgentStepExecutor', 'AGENT_TASK', '调用智能体（Dify / 大模型）'],
               ['HumanStepExecutor', 'HUMAN_TASK', '挂起等待人工审批'],
             ].map(row => (
               <tr key={row[0]}>
@@ -96,7 +95,7 @@ export default function SystemHelp() {
           </tbody>
         </table>
 
-        <h3 style={styles.h3}>临床路径（Clinical Pathway）</h3>
+        <h3 style={styles.h3}>临床大路径（Clinical Pathway）</h3>
         <p style={styles.p}>
           面向临床业务的管理模型。一个路径（如"急性心梗"）包含多个<strong>阶段</strong>（急诊→住院→康复→出院），
           每个阶段下有多个<strong>任务</strong>。路径本身不执行逻辑，而是通过引用关联到流程定义和规则，
@@ -105,7 +104,7 @@ export default function SystemHelp() {
 
         <div style={styles.box}>
           <strong>💡 关键理解：</strong>
-          临床路径是<strong>业务视图</strong>（阶段+任务），流程编排是<strong>执行视图</strong>（DAG 节点+连线）。
+          临床大路径是<strong>业务视图</strong>（阶段+任务），流程编排是<strong>执行视图</strong>（DAG 节点+连线）。
           路径决定"什么时候做什么"，流程决定"具体怎么做"。
         </div>
 
@@ -126,14 +125,14 @@ export default function SystemHelp() {
               ├── id (PK)
               ├── stageId ─────── FK ──→ PathwayStage.id
               ├── processNodeId ──→ ProcessDefinition 画布中 node.id
-              └── taskType ───────→ RULE / DIFY / LLM / HUMAN / ...`}</pre>
+              └── taskType ───────→ RULE / AGENT / HUMAN / ...`}</pre>
 
         <h2 style={styles.h2}>典型流转场景</h2>
-        <p style={styles.p}>以"STEMI 急性心梗临床路径"为例：</p>
+        <p style={styles.p}>以"STEMI 急性心梗临床大路径"为例：</p>
 
         <ol style={{ ...styles.p, paddingLeft: 24 }}>
           <li style={{ marginBottom: 8 }}>
-            <strong>定义路径</strong>：管理员创建"STEMI 临床路径"，设置 4 个阶段（急诊→住院→康复→出院）
+            <strong>定义路径</strong>：管理员创建"STEMI 临床大路径"，设置 4 个阶段（急诊→住院→康复→出院）
             和准入规则 <code style={styles.code}>admission_rule_stemi</code>
           </li>
           <li style={{ marginBottom: 8 }}>
@@ -150,7 +149,7 @@ export default function SystemHelp() {
           </li>
           <li style={{ marginBottom: 8 }}>
             <strong>引擎执行</strong>：<code style={styles.code}>ProcessExecutionEngine</code> 遍历 DAG：
-            RULE_TASK 调 Drools、CONDITION 判断分支、LLM_TASK 调大模型、HUMAN_TASK 挂起等人
+            RULE_TASK 调 Drools、CONDITION 判断分支、AGENT_TASK 调智能体、HUMAN_TASK 挂起等人
           </li>
           <li style={{ marginBottom: 8 }}>
             <strong>阶段切换</strong>：当前阶段的 <code style={styles.code}>exitRuleCode</code> 匹配时，
@@ -182,8 +181,8 @@ export default function SystemHelp() {
               <td style={styles.td}>拖拽 DAG 工作流，支持规则/AI/人工等节点</td>
             </tr>
             <tr>
-              <td style={styles.td}>临床路径</td>
-              <td style={styles.td}><code style={styles.code}>临床路径</code></td>
+              <td style={styles.td}>临床大路径</td>
+              <td style={styles.td}><code style={styles.code}>临床大路径</code></td>
               <td style={styles.td}>管理路径、阶段、任务，关联流程定义</td>
             </tr>
             <tr>

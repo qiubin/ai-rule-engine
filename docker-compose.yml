@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: ./rule-engine-server
+      dockerfile: Dockerfile
+    container_name: rule-engine-backend
+    ports:
+      - "8082:8082"
+    environment:
+      - MYSQL_HOST=192.168.2.166
+      - MYSQL_PORT=3306
+      - MYSQL_DB=ruleengine
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=zoeddc@2017
+    networks:
+      - rule-engine-net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./rule-engine-ui
+      dockerfile: Dockerfile
+    container_name: rule-engine-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - rule-engine-net
+    restart: unless-stopped
+
+networks:
+  rule-engine-net:
+    driver: bridge

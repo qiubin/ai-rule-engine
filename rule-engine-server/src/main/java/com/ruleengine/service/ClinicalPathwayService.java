@@ -4,6 +4,9 @@ import com.ruleengine.domain.ClinicalPathway;
 import com.ruleengine.domain.PathwayStage;
 import com.ruleengine.domain.PathwayTask;
 import com.ruleengine.domain.enums.PathwayStatus;
+import com.ruleengine.dto.ClinicalContext;
+import com.ruleengine.dto.DecisionResponse;
+import com.ruleengine.drools.runtime.DecisionPathEngine;
 import com.ruleengine.repository.ClinicalPathwayRepository;
 import com.ruleengine.repository.PathwayStageRepository;
 import com.ruleengine.repository.PathwayTaskRepository;
@@ -27,6 +30,7 @@ public class ClinicalPathwayService {
     private final ClinicalPathwayRepository clinicalPathwayRepository;
     private final PathwayStageRepository pathwayStageRepository;
     private final PathwayTaskRepository pathwayTaskRepository;
+    private final DecisionPathEngine decisionPathEngine;
 
     public List<ClinicalPathway> findAll() {
         return clinicalPathwayRepository.findByDeletedFalse();
@@ -34,7 +38,7 @@ public class ClinicalPathwayService {
 
     public ClinicalPathway findById(Long id) {
         return clinicalPathwayRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("临床路径不存在: " + id));
+                .orElseThrow(() -> new RuntimeException("临床大路径不存在: " + id));
     }
 
     @Transactional
@@ -49,7 +53,7 @@ public class ClinicalPathwayService {
     public ClinicalPathway update(Long id, ClinicalPathway pathway) {
         ClinicalPathway existing = findById(id);
         if (existing.getStatus() == PathwayStatus.PUBLISHED) {
-            throw new RuntimeException("已发布的临床路径不能直接修改，请先撤回");
+            throw new RuntimeException("已发布的临床大路径不能直接修改，请先撤回");
         }
         existing.setCode(pathway.getCode());
         existing.setName(pathway.getName());
@@ -73,7 +77,7 @@ public class ClinicalPathwayService {
     public List<PathwayStage> saveStages(Long pathwayId, List<PathwayStage> stages) {
         ClinicalPathway pathway = findById(pathwayId);
         if (pathway.getStatus() == PathwayStatus.PUBLISHED) {
-            throw new RuntimeException("已发布的临床路径不能修改阶段");
+            throw new RuntimeException("已发布的临床大路径不能修改阶段");
         }
 
         List<PathwayStage> existingStages = pathwayStageRepository.findByPathwayId(pathwayId);
@@ -89,7 +93,7 @@ public class ClinicalPathwayService {
             stage.setId(null);
             savedStages.add(pathwayStageRepository.save(stage));
         }
-        log.info("临床路径 [{}] 已保存 {} 个阶段", pathway.getCode(), savedStages.size());
+        log.info("临床大路径 [{}] 已保存 {} 个阶段", pathway.getCode(), savedStages.size());
         return savedStages;
     }
 
@@ -99,7 +103,7 @@ public class ClinicalPathwayService {
                 .orElseThrow(() -> new RuntimeException("阶段不存在: " + stageId));
         ClinicalPathway pathway = findById(stage.getPathwayId());
         if (pathway.getStatus() == PathwayStatus.PUBLISHED) {
-            throw new RuntimeException("已发布的临床路径不能修改任务");
+            throw new RuntimeException("已发布的临床大路径不能修改任务");
         }
 
         List<PathwayTask> existingTasks = pathwayTaskRepository.findByStageId(stageId);
@@ -111,7 +115,7 @@ public class ClinicalPathwayService {
             task.setId(null);
             savedTasks.add(pathwayTaskRepository.save(task));
         }
-        log.info("临床路径阶段 [{}] 已保存 {} 个任务", stage.getCode(), savedTasks.size());
+        log.info("临床大路径阶段 [{}] 已保存 {} 个任务", stage.getCode(), savedTasks.size());
         return savedTasks;
     }
 
@@ -120,10 +124,10 @@ public class ClinicalPathwayService {
         ClinicalPathway pathway = findById(id);
         List<PathwayStage> stages = pathwayStageRepository.findByPathwayId(id);
         if (stages.isEmpty()) {
-            throw new RuntimeException("临床路径尚未配置阶段，无法发布");
+            throw new RuntimeException("临床大路径尚未配置阶段，无法发布");
         }
         pathway.setStatus(PathwayStatus.PUBLISHED);
-        log.info("临床路径 [{}] 已发布", pathway.getCode());
+        log.info("临床大路径 [{}] 已发布", pathway.getCode());
         return clinicalPathwayRepository.save(pathway);
     }
 
@@ -132,7 +136,7 @@ public class ClinicalPathwayService {
         ClinicalPathway pathway = findById(id);
         pathway.setDeleted(true);
         pathway.setDeletedAt(LocalDateTime.now());
-        log.info("临床路径 [{}] 已删除", pathway.getCode());
+        log.info("临床大路径 [{}] 已删除", pathway.getCode());
         return clinicalPathwayRepository.save(pathway);
     }
 
@@ -172,5 +176,17 @@ public class ClinicalPathwayService {
         result.put("updatedAt", pathway.getUpdatedAt());
         result.put("stages", stageList);
         return result;
+    }
+
+    /**
+     * 执行决策路径（阶段一 + 二 + 三串联）
+     */
+    @Transactional(readOnly = true)
+    public DecisionResponse executeDecisionPath(Long pathwayId, ClinicalContext context) {
+        return decisionPathEngine.execute(pathwayId, context);
+    }
+
+    public List<ClinicalPathway> findAllPublished() {
+        return clinicalPathwayRepository.findByDeletedFalseAndStatus(PathwayStatus.PUBLISHED);
     }
 }

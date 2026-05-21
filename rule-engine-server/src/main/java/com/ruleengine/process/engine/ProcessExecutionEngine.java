@@ -395,6 +395,8 @@ public class ProcessExecutionEngine {
             case "CONDITION": return "CONDITION";
             case "AND": return "AND";
             case "OR": return "OR";
+            case "DIFY_TASK": return "AGENT_TASK";
+            case "LLM_TASK": return "AGENT_TASK";
             default: return upper;
         }
     }

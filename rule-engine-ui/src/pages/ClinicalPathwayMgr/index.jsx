@@ -36,7 +36,7 @@ export default function ClinicalPathwayMgr() {
       const res = await axios.get(API)
       setList(res.data || [])
     } catch (e) {
-      message.error('加载临床路径失败: ' + (e.response?.data?.message || e.message))
+      message.error('加载临床大路径失败: ' + (e.response?.data?.message || e.message))
     }
     setLoading(false)
   }, [])
@@ -190,7 +190,7 @@ export default function ClinicalPathwayMgr() {
           )}
           <Popconfirm
             title="确认删除？"
-            description={`将临床路径「${record.name}」移入回收站`}
+            description={`将临床大路径「${record.name}」移入回收站`}
             onConfirm={() => handleDelete(record.id)}
             okText="确认"
             cancelText="取消"
@@ -223,7 +223,7 @@ export default function ClinicalPathwayMgr() {
   return (
     <Layout style={{ height: '100%', background: '#fff', padding: 24 }}>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0 }}>临床路径管理</h2>
+        <h2 style={{ margin: 0 }}>临床大路径管理</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新建路径</Button>
       </div>
       <Table
@@ -236,7 +236,7 @@ export default function ClinicalPathwayMgr() {
       />
 
       <Modal
-        title={editing ? '编辑临床路径' : '新建临床路径'}
+        title={editing ? '编辑临床大路径' : '新建临床大路径'}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
@@ -247,7 +247,7 @@ export default function ClinicalPathwayMgr() {
             <Input disabled={!!editing} placeholder="如 CP-001" />
           </Form.Item>
           <Form.Item name="name" label="路径名称" rules={[{ required: true, message: '请输入路径名称' }]}>
-            <Input placeholder="如 急性心肌梗死临床路径" />
+            <Input placeholder="如 急性心肌梗死临床大路径" />
           </Form.Item>
           <Form.Item name="description" label="描述">
             <Input.TextArea rows={2} placeholder="路径描述" />
