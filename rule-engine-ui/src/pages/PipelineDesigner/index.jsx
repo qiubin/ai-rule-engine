@@ -10,7 +10,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Button, Input, Modal, message, Layout, Space, Popconfirm, Drawer, Tag, Empty, Card, Form, InputNumber, Alert, Divider, Select, Radio } from 'antd';
-import { PlusOutlined, SaveOutlined, CloudUploadOutlined, StopOutlined, PlayCircleOutlined, BranchesOutlined, PlaySquareOutlined, ColumnWidthOutlined, ArrowLeftOutlined, ToolOutlined, CodeOutlined, ClockCircleOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined, SaveOutlined, DeleteOutlined, CloudUploadOutlined, StopOutlined, PlayCircleOutlined, BranchesOutlined, PlaySquareOutlined, ColumnWidthOutlined, ArrowLeftOutlined, ToolOutlined, CodeOutlined, ClockCircleOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
 import dagre from '@dagrejs/dagre';
 import axios from 'axios';
 
