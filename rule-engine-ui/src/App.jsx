@@ -10,6 +10,7 @@ import ResultModelMgr from './pages/ResultModelMgr'
 import RuleExecute from './pages/RuleExecute'
 import SystemMenu from './pages/SystemMenu'
 import PipelineDesigner from './pages/PipelineDesigner'
+import PipelineList from './pages/PipelineList'
 import ClinicalPathwayMgr from './pages/ClinicalPathwayMgr'
 import DecisionTest from './pages/DecisionTest'
 
@@ -51,6 +52,7 @@ function App() {
         'system': 'system',
         'execute': 'execute',
         'pipeline': 'pipeline',
+        'pipelineEditor': 'pipelineEditor',
         'pathway': 'pathway',
         'decision': 'decision',
       }
@@ -77,7 +79,8 @@ function App() {
       case 'models': return <ConditionModelMgr />
       case 'results': return <ResultModelMgr />
       case 'execute': return <RuleExecute />
-      case 'pipeline': return <PipelineDesigner />
+      case 'pipeline': return <PipelineList />
+      case 'pipelineEditor': return <PipelineDesigner />
       case 'pathway': return <ClinicalPathwayMgr />
       case 'decision': return <DecisionTest />
       case 'system': return <SystemMenu />
