@@ -10,7 +10,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Button, Input, Modal, message, Layout, Space, Popconfirm, Drawer, Tag, Empty, Card, Form, InputNumber, Alert, Divider, Select, Radio } from 'antd';
-import { PlusOutlined, SaveOutlined, DeleteOutlined, PlayCircleOutlined, BranchesOutlined, PlaySquareOutlined, StopOutlined, ColumnWidthOutlined, ArrowLeftOutlined, ToolOutlined, CodeOutlined, ClockCircleOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined, SaveOutlined, CloudUploadOutlined, StopOutlined, PlayCircleOutlined, BranchesOutlined, PlaySquareOutlined, ColumnWidthOutlined, ArrowLeftOutlined, ToolOutlined, CodeOutlined, ClockCircleOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
 import dagre from '@dagrejs/dagre';
 import axios from 'axios';
 
@@ -134,6 +134,7 @@ const PipelineDesigner = () => {
   const [pipelineId, setPipelineId] = useState('');
   const [pipelineCode, setPipelineCode] = useState('');
   const [pipelineName, setPipelineName] = useState('未命名流水线');
+  const [pipelineStatus, setPipelineStatus] = useState('DRAFT');
   const [allRuleTypes, setAllRuleTypes] = useState([]);
   const [allRules, setAllRules] = useState([]);
   const [filteredRules, setFilteredRules] = useState([]);
@@ -191,6 +192,7 @@ const PipelineDesigner = () => {
     setPipelineId('');
     setPipelineCode('');
     setPipelineName('新流水线_' + new Date().getTime().toString().slice(-4));
+    setPipelineStatus('DRAFT');
     message.info('已重置画布');
   };
 
@@ -347,7 +349,6 @@ const PipelineDesigner = () => {
     try {
       const res = await axios.get(`/api/v1/processes/${id}`);
       const data = res.data;
-      // 解析 canvasData JSON → { nodes, edges }
       let nodes = [], edges = [];
       if (data.canvasData) {
         try {
@@ -361,7 +362,30 @@ const PipelineDesigner = () => {
       setPipelineId(data.id);
       setPipelineCode(data.code);
       setPipelineName(data.name || data.code);
+      setPipelineStatus(data.status || 'DRAFT');
     } catch (err) { message.error('加载失败'); }
+  };
+
+  const publishPipeline = async () => {
+    if (!pipelineId) { message.warning('请先保存流程'); return; }
+    try {
+      await axios.post(`/api/v1/processes/${pipelineId}/publish`);
+      message.success('流程已发布');
+      setPipelineStatus('PUBLISHED');
+    } catch (err) {
+      message.error(err?.response?.data?.message || '发布失败');
+    }
+  };
+
+  const disablePipeline = async () => {
+    if (!pipelineId) return;
+    try {
+      await axios.post(`/api/v1/processes/${pipelineId}/disable`);
+      message.success('流程已停用');
+      setPipelineStatus('DISABLED');
+    } catch (err) {
+      message.error(err?.response?.data?.message || '停用失败');
+    }
   };
 
   const handleRunTest = async (values) => {
@@ -425,11 +449,20 @@ const PipelineDesigner = () => {
             <Space size="large">
               <Button icon={<ArrowLeftOutlined />} onClick={() => window.location.href = '/?page=pipeline'}>返回列表</Button>
               <Input value={pipelineName} onChange={(e) => setPipelineName(e.target.value)} variant="borderless" style={{ fontSize: 18, fontWeight: 'bold', width: 250 }} />
+              {pipelineStatus === 'PUBLISHED' && <Tag color="success">已发布</Tag>}
+              {pipelineStatus === 'DISABLED' && <Tag color="error">已停用</Tag>}
+              {pipelineStatus === 'DRAFT' && <Tag>草稿</Tag>}
             </Space>
             <Space>
               <Button icon={<ColumnWidthOutlined />} onClick={handleAutoLayout} disabled={nodes.length === 0}>一键排列</Button>
               <Button icon={<PlayCircleOutlined />} onClick={() => setIsTestModalOpen(true)} disabled={!pipelineId} style={{ color: '#faad14', borderColor: '#faad14' }}>运行测试</Button>
-              <Button type="primary" icon={<SaveOutlined />} onClick={savePipeline}>保存发布</Button>
+              <Button icon={<SaveOutlined />} onClick={savePipeline}>保存</Button>
+              {pipelineStatus !== 'PUBLISHED' && (
+                <Button type="primary" icon={<CloudUploadOutlined />} onClick={publishPipeline} disabled={!pipelineId}>发布</Button>
+              )}
+              {pipelineStatus === 'PUBLISHED' && (
+                <Button danger icon={<StopOutlined />} onClick={disablePipeline}>停用</Button>
+              )}
             </Space>
           </div>
           

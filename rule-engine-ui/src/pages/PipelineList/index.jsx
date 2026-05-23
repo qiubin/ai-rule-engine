@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button, Input, Modal, message, Space, Typography, Popconfirm, Form, Table, Tooltip, Tag } from 'antd';
-import { PlusOutlined, DeleteOutlined, EditOutlined, CopyOutlined, ReloadOutlined, FolderOpenOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EditOutlined, CopyOutlined, ReloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Text } = Typography;
@@ -163,8 +163,11 @@ const PipelineList = () => {
               ellipsis: true,
               render: (_, row) => (
                 <div>
-                  <div style={{ fontWeight: 600 }}>{row.name}</div>
-                  <Text type="secondary" style={{ fontSize: 11 }}>{row.id}</Text>
+                  <a
+                    style={{ fontWeight: 600, cursor: 'pointer' }}
+                    onClick={() => window.location.href = `/?page=pipelineEditor&id=${row.id}`}
+                  >{row.name}</a>
+                  <div><Text type="secondary" style={{ fontSize: 11 }}>{row.id}</Text></div>
                 </div>
               ),
             },
@@ -201,14 +204,6 @@ const PipelineList = () => {
               width: 180,
               render: (_, row) => (
                 <Space size={4}>
-                  <Tooltip title="编辑">
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<FolderOpenOutlined />}
-                      onClick={() => window.location.href = `/?page=pipelineEditor&id=${row.id}`}
-                    />
-                  </Tooltip>
                   <Tooltip title="重命名">
                     <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openRenameModal(row)} />
                   </Tooltip>
