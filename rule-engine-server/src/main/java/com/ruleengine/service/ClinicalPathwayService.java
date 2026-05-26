@@ -17,9 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -81,16 +84,43 @@ public class ClinicalPathwayService {
         }
 
         List<PathwayStage> existingStages = pathwayStageRepository.findByPathwayId(pathwayId);
-        for (PathwayStage stage : existingStages) {
-            List<PathwayTask> existingTasks = pathwayTaskRepository.findByStageId(stage.getId());
-            pathwayTaskRepository.deleteAll(existingTasks);
+        Set<Long> existingIds = existingStages.stream()
+                .map(PathwayStage::getId)
+                .collect(Collectors.toSet());
+
+        List<PathwayStage> toSave = new ArrayList<>();
+        Set<Long> submittedIds = new HashSet<>();
+
+        for (PathwayStage stage : stages) {
+            if (stage.getId() != null && existingIds.contains(stage.getId())) {
+                PathwayStage existing = existingStages.stream()
+                        .filter(s -> s.getId().equals(stage.getId()))
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException("阶段不存在: " + stage.getId()));
+                existing.setCode(stage.getCode());
+                existing.setName(stage.getName());
+                existing.setSortOrder(stage.getSortOrder());
+                existing.setDescription(stage.getDescription());
+                existing.setExitRuleCode(stage.getExitRuleCode());
+                toSave.add(existing);
+                submittedIds.add(stage.getId());
+            } else {
+                stage.setId(null);
+                stage.setPathwayId(pathwayId);
+                toSave.add(stage);
+            }
         }
-        pathwayStageRepository.deleteAll(existingStages);
+
+        for (PathwayStage stage : existingStages) {
+            if (!submittedIds.contains(stage.getId())) {
+                List<PathwayTask> existingTasks = pathwayTaskRepository.findByStageId(stage.getId());
+                pathwayTaskRepository.deleteAll(existingTasks);
+                pathwayStageRepository.delete(stage);
+            }
+        }
 
         List<PathwayStage> savedStages = new ArrayList<>();
-        for (PathwayStage stage : stages) {
-            stage.setPathwayId(pathwayId);
-            stage.setId(null);
+        for (PathwayStage stage : toSave) {
             savedStages.add(pathwayStageRepository.save(stage));
         }
         log.info("临床大路径 [{}] 已保存 {} 个阶段", pathway.getCode(), savedStages.size());

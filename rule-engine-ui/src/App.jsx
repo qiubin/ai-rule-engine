@@ -13,10 +13,12 @@ import PipelineDesigner from './pages/PipelineDesigner'
 import PipelineList from './pages/PipelineList'
 import ClinicalPathwayMgr from './pages/ClinicalPathwayMgr'
 import DecisionTest from './pages/DecisionTest'
+import ScenarioTest from './pages/ScenarioTest'
 
 const NAV_ITEMS = [
   { key: 'types', label: '规则类型' },
   { key: 'execute', label: '规则执行' },
+  { key: 'scenario', label: '场景测试' },
   { key: 'pipeline', label: '流程编排' },
   { key: 'pathway', label: '临床大路径' },
   { key: 'decision', label: '决策测试台' },
@@ -26,6 +28,7 @@ const NAV_ITEMS = [
 const PAGE_NAME_MAP = {
   'types': '规则类型',
   'execute': '规则执行',
+  'scenario': '场景测试',
   'pipeline': '流程编排',
   'pathway': '临床大路径',
   'decision': '决策测试台',
@@ -51,6 +54,7 @@ function App() {
         'types': 'types',
         'system': 'system',
         'execute': 'execute',
+        'scenario': 'scenario',
         'pipeline': 'pipeline',
         'pipelineEditor': 'pipelineEditor',
         'pathway': 'pathway',
@@ -79,6 +83,7 @@ function App() {
       case 'models': return <ConditionModelMgr />
       case 'results': return <ResultModelMgr />
       case 'execute': return <RuleExecute />
+      case 'scenario': return <ScenarioTest />
       case 'pipeline': return <PipelineList />
       case 'pipelineEditor': return <PipelineDesigner />
       case 'pathway': return <ClinicalPathwayMgr />
