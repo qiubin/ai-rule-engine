@@ -9,13 +9,12 @@ import ReactFlow, {
   Position
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Button, Input, Modal, message, Layout, Space, Typography, Popconfirm, Drawer, Tag, Empty, Card, Form, InputNumber, Alert, Divider, Select, Radio, Table, Tooltip } from 'antd';
-import { PlusOutlined, SaveOutlined, DeleteOutlined, FolderOpenOutlined, PlayCircleOutlined, BranchesOutlined, PlaySquareOutlined, StopOutlined, ColumnWidthOutlined, EditOutlined, CopyOutlined, ReloadOutlined, ToolOutlined, CodeOutlined, ClockCircleOutlined, RobotOutlined, BulbOutlined, UserOutlined } from '@ant-design/icons';
+import { Button, Input, Modal, message, Layout, Space, Popconfirm, Drawer, Tag, Empty, Card, Form, InputNumber, Alert, Divider, Select, Radio } from 'antd';
+import { PlusOutlined, SaveOutlined, DeleteOutlined, CloudUploadOutlined, StopOutlined, PlayCircleOutlined, BranchesOutlined, PlaySquareOutlined, ColumnWidthOutlined, ArrowLeftOutlined, ToolOutlined, CodeOutlined, ClockCircleOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
 import dagre from '@dagrejs/dagre';
 import axios from 'axios';
 
 const { Sider, Content } = Layout;
-const { Text } = Typography;
 const { Option } = Select;
 
 // --- 自定义节点组件 ---
@@ -135,21 +134,14 @@ const PipelineDesigner = () => {
   const [pipelineId, setPipelineId] = useState('');
   const [pipelineCode, setPipelineCode] = useState('');
   const [pipelineName, setPipelineName] = useState('未命名流水线');
-  const [pipelineList, setPipelineList] = useState([]);
-  const [pipelineSearch, setPipelineSearch] = useState('');
-  const [renameModalOpen, setRenameModalOpen] = useState(false);
-  const [renameTarget, setRenameTarget] = useState(null);
-  const [renameForm] = Form.useForm();
-  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
-  const [duplicateSourceId, setDuplicateSourceId] = useState('');
-  const [duplicateForm] = Form.useForm();
+  const [pipelineStatus, setPipelineStatus] = useState('DRAFT');
   const [allRuleTypes, setAllRuleTypes] = useState([]);
   const [allRules, setAllRules] = useState([]);
   const [filteredRules, setFilteredRules] = useState([]);
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentNode, setCurrentNode] = useState(null);
-  
+
   const [selectedTypeId, setSelectedTypeId] = useState(null);
   const [selectedRuleCode, setSelectedRuleCode] = useState('');
   const [conditionConfig, setConditionConfig] = useState({ refNodeId: '', expected: 'matched' });
@@ -159,23 +151,15 @@ const PipelineDesigner = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [execResult, setExecResult] = useState(null);
-  
+
   const [testForm] = Form.useForm();
 
   const fetchInitialData = useCallback(async () => {
     try {
-      const [resList, resTypes, resRules] = await Promise.all([
-        axios.get('/api/v1/processes'),
+      const [resTypes, resRules] = await Promise.all([
         axios.get('/api/v1/rule-types'),
         axios.get('/api/v1/rules')
       ]);
-      const raw = Array.isArray(resList.data) ? resList.data : (resList.data.pipelines || []);
-      const normalized = raw.map((p) =>
-        typeof p === 'string'
-          ? { id: p, name: p, nodeCount: 0, edgeCount: 0, updatedAt: 0 }
-          : { ...p, id: p.id, name: p.name || p.id }
-      );
-      setPipelineList(normalized);
       setAllRuleTypes(resTypes.data || []);
       setAllRules(resRules.data || []);
     } catch (err) {
@@ -185,6 +169,12 @@ const PipelineDesigner = () => {
 
   useEffect(() => {
     fetchInitialData();
+    // 从 URL 参数读取流程 ID，自动加载
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id) {
+      loadPipeline(id);
+    }
   }, [fetchInitialData]);
 
   const onNodesChange = useCallback((changes) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
@@ -202,6 +192,7 @@ const PipelineDesigner = () => {
     setPipelineId('');
     setPipelineCode('');
     setPipelineName('新流水线_' + new Date().getTime().toString().slice(-4));
+    setPipelineStatus('DRAFT');
     message.info('已重置画布');
   };
 
@@ -358,7 +349,6 @@ const PipelineDesigner = () => {
     try {
       const res = await axios.get(`/api/v1/processes/${id}`);
       const data = res.data;
-      // 解析 canvasData JSON → { nodes, edges }
       let nodes = [], edges = [];
       if (data.canvasData) {
         try {
@@ -372,95 +362,29 @@ const PipelineDesigner = () => {
       setPipelineId(data.id);
       setPipelineCode(data.code);
       setPipelineName(data.name || data.code);
+      setPipelineStatus(data.status || 'DRAFT');
     } catch (err) { message.error('加载失败'); }
   };
 
-  const openRenameModal = (row) => {
-    setRenameTarget(row);
-    renameForm.setFieldsValue({ name: row.name });
-    setRenameModalOpen(true);
-  };
-
-  const submitRename = async () => {
+  const publishPipeline = async () => {
+    if (!pipelineId) { message.warning('请先保存流程'); return; }
     try {
-      const { name } = await renameForm.validateFields();
-      await axios.post(`/api/v1/processes/${renameTarget.id}/rename`, { name });
-      message.success('已更新名称');
-      setRenameModalOpen(false);
-      if (pipelineId === renameTarget.id) setPipelineName(name);
-      fetchInitialData();
+      await axios.post(`/api/v1/processes/${pipelineId}/publish`);
+      message.success('流程已发布');
+      setPipelineStatus('PUBLISHED');
     } catch (err) {
-      if (err?.errorFields) return;
-      message.error(err?.response?.data?.detail || '重命名失败');
+      message.error(err?.response?.data?.message || '发布失败');
     }
   };
 
-  const deletePipelineById = async (id) => {
+  const disablePipeline = async () => {
+    if (!pipelineId) return;
     try {
-      await axios.delete(`/api/v1/processes/${id}`);
-      message.success('已删除流程');
-      if (pipelineId === id) {
-        setNodes([]);
-        setEdges([]);
-        setPipelineId('');
-        setPipelineCode('');
-        setPipelineName('新流水线_' + new Date().getTime().toString().slice(-4));
-      }
-      fetchInitialData();
+      await axios.post(`/api/v1/processes/${pipelineId}/disable`);
+      message.success('流程已停用');
+      setPipelineStatus('DISABLED');
     } catch (err) {
-      message.error(err?.response?.data?.detail || '删除失败');
-    }
-  };
-
-  const openDuplicateModal = (row) => {
-    setDuplicateSourceId(row.id);
-    duplicateForm.setFieldsValue({
-      newId: `${row.id}_copy_${Date.now().toString().slice(-4)}`,
-      newName: `${row.name || row.id}（副本）`,
-    });
-    setDuplicateModalOpen(true);
-  };
-
-  const submitDuplicate = async () => {
-    try {
-      const { newId, newName } = await duplicateForm.validateFields();
-      const idNorm = String(newId).trim().replace(/\s+/g, '_');
-      if (!/^[\w.-]+$/.test(idNorm)) {
-        message.warning('流程编码仅允许字母、数字、下划线、点、横线');
-        return;
-      }
-      await axios.post('/api/v1/processes/duplicate', {
-        source_id: duplicateSourceId,
-        target_id: idNorm,
-        name: String(newName).trim() || idNorm,
-      });
-      message.success('已复制为新流程');
-      setDuplicateModalOpen(false);
-      await fetchInitialData();
-      await loadPipeline(idNorm);
-    } catch (err) {
-      if (err?.errorFields) return;
-      const d = err?.response?.data?.detail;
-      message.error(typeof d === 'string' ? d : '复制失败');
-    }
-  };
-
-  const filteredPipelines = pipelineList.filter((row) => {
-    const q = pipelineSearch.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      (row.name || '').toLowerCase().includes(q) ||
-      (row.id || '').toLowerCase().includes(q)
-    );
-  });
-
-  const formatUpdated = (ms) => {
-    if (!ms) return '—';
-    try {
-      const d = new Date(ms);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    } catch {
-      return '—';
+      message.error(err?.response?.data?.message || '停用失败');
     }
   };
 
@@ -497,7 +421,7 @@ const PipelineDesigner = () => {
     <Layout style={{ height: 'calc(100vh - 64px)' }}>
       <Sider width={340} theme="light" style={{ borderRight: '1px solid #f0f0f0', overflow: 'auto' }}>
         <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
-          <Button type="primary" block icon={<PlusOutlined />} onClick={createNew} style={{ marginBottom: 16 }}>新建流程</Button>
+          <Button block icon={<PlusOutlined />} onClick={createNew} style={{ marginBottom: 16 }}>清空画布</Button>
           <Divider orientation="left" plain style={{ fontSize: '12px', margin: '10px 0' }}>通用节点</Divider>
           <Space direction="vertical" style={{ width: '100%' }}>
              <Button block icon={<PlaySquareOutlined />} onClick={() => addNode('start')} style={{ color: '#52c41a' }}>添加开始节点</Button>
@@ -517,105 +441,28 @@ const PipelineDesigner = () => {
              <Button block icon={<UserOutlined />} onClick={() => addNode('human_task')} style={{ color: '#eb2f96' }}>人工任务</Button>
           </Space>
         </div>
-        <div style={{ padding: '12px 12px 8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <Text strong>已存流程</Text>
-            <Tooltip title="刷新列表">
-              <Button type="text" size="small" icon={<ReloadOutlined />} onClick={() => fetchInitialData()} />
-            </Tooltip>
-          </div>
-          <Input
-            allowClear
-            placeholder="按名称或编码筛选"
-            value={pipelineSearch}
-            onChange={(e) => setPipelineSearch(e.target.value)}
-            style={{ marginBottom: 8 }}
-          />
-          <Table
-            size="small"
-            pagination={false}
-            scroll={{ y: 'calc(100vh - 420px)' }}
-            rowKey="id"
-            dataSource={filteredPipelines}
-            locale={{ emptyText: '暂无已存流程' }}
-            rowClassName={(record) => (record.id === pipelineId ? 'pipeline-row-active' : '')}
-            columns={[
-              {
-                title: '流程',
-                key: 'name',
-                ellipsis: true,
-                render: (_, row) => (
-                  <div>
-                    <div style={{ fontWeight: pipelineId === row.id ? 600 : 400 }}>{row.name}</div>
-                    <Text type="secondary" style={{ fontSize: 11 }}>{row.id}</Text>
-                  </div>
-                ),
-              },
-              {
-                title: '节点',
-                dataIndex: 'nodeCount',
-                width: 44,
-                align: 'center',
-                render: (n) => (n != null ? n : '—'),
-              },
-              {
-                title: '更新',
-                dataIndex: 'updatedAt',
-                width: 88,
-                ellipsis: true,
-                render: (ms) => <span style={{ fontSize: 11 }}>{formatUpdated(ms)}</span>,
-              },
-              {
-                title: '',
-                key: 'actions',
-                width: 108,
-                render: (_, row) => (
-                  <Space size={0}>
-                    <Tooltip title="打开">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<FolderOpenOutlined />}
-                        onClick={() => loadPipeline(row.id)}
-                      />
-                    </Tooltip>
-                    <Tooltip title="重命名">
-                      <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openRenameModal(row)} />
-                    </Tooltip>
-                    <Tooltip title="复制为新流程">
-                      <Button type="text" size="small" icon={<CopyOutlined />} onClick={() => openDuplicateModal(row)} />
-                    </Tooltip>
-                    <Popconfirm
-                      title="确定删除该流程？"
-                      description="删除后不可恢复"
-                      okText="删除"
-                      cancelText="取消"
-                      okButtonProps={{ danger: true }}
-                      onConfirm={() => deletePipelineById(row.id)}
-                    >
-                      <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label="删除" />
-                    </Popconfirm>
-                  </Space>
-                ),
-              },
-            ]}
-          />
-        </div>
-        <style>{`
-          .pipeline-row-active td { background: #e6f7ff !important; }
-        `}</style>
       </Sider>
       
       <Layout>
         <Content style={{ display: 'flex', flexDirection: 'column', background: '#fff' }}>
           <div style={{ padding: '12px 24px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Space size="large">
+              <Button icon={<ArrowLeftOutlined />} onClick={() => window.location.href = '/?page=pipeline'}>返回列表</Button>
               <Input value={pipelineName} onChange={(e) => setPipelineName(e.target.value)} variant="borderless" style={{ fontSize: 18, fontWeight: 'bold', width: 250 }} />
+              {pipelineStatus === 'PUBLISHED' && <Tag color="success">已发布</Tag>}
+              {pipelineStatus === 'DISABLED' && <Tag color="error">已停用</Tag>}
+              {pipelineStatus === 'DRAFT' && <Tag>草稿</Tag>}
             </Space>
             <Space>
               <Button icon={<ColumnWidthOutlined />} onClick={handleAutoLayout} disabled={nodes.length === 0}>一键排列</Button>
               <Button icon={<PlayCircleOutlined />} onClick={() => setIsTestModalOpen(true)} disabled={!pipelineId} style={{ color: '#faad14', borderColor: '#faad14' }}>运行测试</Button>
-              <Button type="primary" icon={<SaveOutlined />} onClick={savePipeline}>保存发布</Button>
+              <Button icon={<SaveOutlined />} onClick={savePipeline}>保存</Button>
+              {pipelineStatus !== 'PUBLISHED' && (
+                <Button type="primary" icon={<CloudUploadOutlined />} onClick={publishPipeline} disabled={!pipelineId}>发布</Button>
+              )}
+              {pipelineStatus === 'PUBLISHED' && (
+                <Button danger icon={<StopOutlined />} onClick={disablePipeline}>停用</Button>
+              )}
             </Space>
           </div>
           
@@ -830,43 +677,6 @@ const PipelineDesigner = () => {
           <Form.Item label="手术史 (opOperName)" name="opOperName"><Input /></Form.Item>
           <Form.Item label="年龄 (age)" name="age"><InputNumber style={{ width: '100%' }} /></Form.Item>
           <Form.Item label="出血史 (bleeding_history)" name="bleeding_history"><Input /></Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="重命名流程"
-        open={renameModalOpen}
-        onOk={submitRename}
-        onCancel={() => setRenameModalOpen(false)}
-        destroyOnClose
-      >
-        <Form form={renameForm} layout="vertical" preserve={false}>
-          <Form.Item label="显示名称" name="name" rules={[{ required: true, message: '请输入名称' }]}>
-            <Input placeholder="流程在列表中的名称" maxLength={120} />
-          </Form.Item>
-          <Text type="secondary" style={{ fontSize: 12 }}>流程编码（文件 id）不变：{renameTarget?.id}</Text>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="复制为新流程"
-        open={duplicateModalOpen}
-        onOk={submitDuplicate}
-        onCancel={() => setDuplicateModalOpen(false)}
-        destroyOnClose
-      >
-        <Form form={duplicateForm} layout="vertical" preserve={false}>
-          <Form.Item
-            label="新流程编码"
-            name="newId"
-            rules={[{ required: true, message: '请输入编码' }]}
-            extra="用于保存文件名，仅字母、数字、下划线、点、横线"
-          >
-            <Input placeholder="例如 my_pipeline_v2" maxLength={80} />
-          </Form.Item>
-          <Form.Item label="显示名称" name="newName" rules={[{ required: true, message: '请输入名称' }]}>
-            <Input placeholder="列表中显示的名称" maxLength={120} />
-          </Form.Item>
         </Form>
       </Modal>
 
