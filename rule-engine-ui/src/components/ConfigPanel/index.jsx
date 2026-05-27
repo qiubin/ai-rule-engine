@@ -24,6 +24,21 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
   const [elementDictCode, setElementDictCode] = useState(null)
   // timeCheck 基准时间字段相关的数据集
   const [selectedBaseDatasetId, setSelectedBaseDatasetId] = useState(null)
+  // fieldCompare 字段B的数据集
+  const [selectedFieldBDataSetId, setSelectedFieldBDataSetId] = useState(null)
+  // fieldCompare 的比较类型（用于动态切换比较符/阈值），必须在组件顶层 watch 避免条件 hook
+  const fieldCompareType = Form.useWatch('extraValue2', form)
+  // 顶层 watch operator 与 field，用于 fieldCompare 时强制保持字段A === 条件字段
+  const watchedOperator = Form.useWatch('operator', form)
+  const watchedField = Form.useWatch('field', form)
+  useEffect(() => {
+    if (watchedOperator === 'fieldCompare') {
+      const cur = form.getFieldValue('value')
+      if (cur !== watchedField) {
+        form.setFieldsValue({ value: watchedField })
+      }
+    }
+  }, [watchedOperator, watchedField, form])
 
   useEffect(() => {
     if (node && open) {
@@ -119,6 +134,24 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
           }
         }
       }
+      // 反推 fieldCompare 字段B 的数据集ID（根据 extraValue1 中存储的数据元code）
+      const cc = node.data?.conditionConfig
+      if (cc?.operator === 'fieldCompare' && cc?.extraValue1) {
+        const fieldBCode = cc.extraValue1
+        const cm = allConditions.find(c => c.code === fieldBCode)
+        if (cm?.dataElementId) {
+          const de = dataElements.find(d => d.id === cm.dataElementId)
+          if (de?.datasetId) {
+            const ds = dataSets.find(s => s.id === de.datasetId)
+            if (ds) {
+              setSelectedFieldBDataSetId(de.datasetId)
+              form.setFieldsValue({
+                fieldBDatasetId: [ds.catL1Code, ds.catL2Code, ds.catL3Code, ds.id]
+              })
+            }
+          }
+        }
+      }
     }
   }, [allConditions, dataElements, dataSets, node, form])
 
@@ -184,9 +217,11 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
   const onConditionChange = async (modelId) => {
     const model = conditions.find(m => m.id === modelId)
     if (node?.type === 'condition' && model && model.dataElementId) {
+      const isFieldCompare = form.getFieldValue('operator') === 'fieldCompare'
       form.setFieldsValue({
         field: model.code,
         dataType: model.dataType,
+        value: isFieldCompare ? model.code : form.getFieldValue('value'),
       })
     }
     if (node?.type === 'result') {
@@ -244,6 +279,12 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
     const deIds = dataElements.filter(de => de.datasetId === selectedBaseDatasetId).map(de => de.id)
     return allConditions.filter(cm => deIds.includes(cm.dataElementId))
   }, [selectedBaseDatasetId, dataElements, allConditions])
+
+  const filteredFieldBConditions = useMemo(() => {
+    if (!selectedFieldBDataSetId) return []
+    const deIds = dataElements.filter(de => de.datasetId === selectedFieldBDataSetId).map(de => de.id)
+    return allConditions.filter(cm => deIds.includes(cm.dataElementId))
+  }, [selectedFieldBDataSetId, dataElements, allConditions])
 
   const handleSave = () => {
     const values = form.getFieldsValue()
@@ -515,7 +556,12 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
             const dsId = value?.[value.length - 1]
             setSelectedDatasetId(dsId || null)
             setElementDictCode(null)
-            form.setFieldsValue({ conditionModelId: undefined, field: undefined, dataType: undefined })
+            const patch = { conditionModelId: undefined, field: undefined, dataType: undefined }
+            // fieldCompare 场景下，字段A 跟随条件模型，数据集变化也要清掉
+            if (form.getFieldValue('operator') === 'fieldCompare') {
+              patch.value = undefined
+            }
+            form.setFieldsValue(patch)
           }}
         />
       </Form.Item>
@@ -529,11 +575,16 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
               const de = dataElements.find(d => d.id === model.dataElementId)
               const dictCode = de?.dictCode || null
               setElementDictCode(dictCode)
-              form.setFieldsValue({
+              const patch = {
                 field: model.code,
                 dataType: model.dataType,
                 dictCode: dictCode || undefined,
-              })
+              }
+              // fieldCompare 场景下，字段A 跟随当前条件模型同步
+              if (form.getFieldValue('operator') === 'fieldCompare') {
+                patch.value = model.code
+              }
+              form.setFieldsValue(patch)
             }
           }}
         >
@@ -555,7 +606,23 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
         <Input disabled placeholder="自动来自条件" />
       </Form.Item>
       <Form.Item name="operator" label="计算符" rules={[{ required: true }]}>
-        <Select placeholder="选择计算符" onChange={(val) => setSelectedOperator(val)}>
+        <Select
+          placeholder="选择计算符"
+          onChange={(val) => {
+            setSelectedOperator(val)
+            // 切换到 fieldCompare 时，自动把当前条件模型的编码填到 value（字段A）
+            if (val === 'fieldCompare') {
+              const cmId = form.getFieldValue('conditionModelId')
+              const cm = allConditions.find(m => m.id === cmId)
+              if (cm) {
+                form.setFieldsValue({ value: cm.code })
+              }
+            } else {
+              // 切走 fieldCompare 时清空字段B数据集状态，避免残留
+              setSelectedFieldBDataSetId(null)
+              form.setFieldsValue({ fieldBDatasetId: undefined })
+            }
+          }}>
           <OptGroup label="通用计算符">
             <Option value="==">等于 ==</Option>
             <Option value="!=">不等于 !=</Option>
@@ -836,34 +903,83 @@ export default function ConfigPanel({ open, onClose, node, onUpdate, conditionFi
         </>
       ) : selectedOperator === 'fieldCompare' ? (
         <>
-          <Form.Item name="value" label="字段A" rules={[{ required: true }]}>
-            <Input placeholder="如: admissionTime" />
+          <Form.Item name="value" label="字段A（当前条件模型）">
+            <Input disabled placeholder="自动来自当前条件模型的编码" />
           </Form.Item>
-          <Form.Item name="extraValue1" label="字段B" rules={[{ required: true }]}>
-            <Input placeholder="如: historyCollectionTime" />
+          <Form.Item name="fieldBDatasetId" label="字段B 数据集" rules={[{ required: true, message: '必须选择字段B数据集' }]}>
+            <Cascader
+              options={cascaderOptions}
+              placeholder="选择字段B数据集分类"
+              onChange={(value) => {
+                const dsId = value?.[value.length - 1]
+                setSelectedFieldBDataSetId(dsId || null)
+                form.setFieldsValue({ extraValue1: undefined })
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="extraValue1" label="字段B 数据元" rules={[{ required: true, message: '必须选择字段B数据元' }]}>
+            <Select
+              placeholder={selectedFieldBDataSetId ? '选择该数据集下的数据元' : '请先选择字段B数据集'}
+              disabled={!selectedFieldBDataSetId}
+              showSearch
+              optionFilterProp="children"
+            >
+              {filteredFieldBConditions.map(cm => {
+                const de = dataElements.find(d => d.id === cm.dataElementId)
+                return (
+                  <Option key={cm.id} value={cm.code}>
+                    {de?.name || cm.name}
+                    <Tag color="blue" style={{ marginLeft: 8 }}>{cm.dataType}</Tag>
+                  </Option>
+                )
+              })}
+            </Select>
           </Form.Item>
           <Form.Item name="extraValue2" label="比较类型" rules={[{ required: true }]}>
-            <Select placeholder="选择比较类型">
+            <Select
+              placeholder="选择比较类型"
+              onChange={(v) => {
+                if (v === 'STRING_EQ') {
+                  // 字符串相等场景：阈值无意义；比较符强制为 ==
+                  form.setFieldsValue({ extraValue4: '0', extraValue3: '==' })
+                }
+              }}>
+              <Option value="STRING_EQ">字符串相等 STRING_EQ</Option>
               <Option value="TIME_DIFF_HOUR">时间差（小时） TIME_DIFF_HOUR</Option>
               <Option value="TIME_DIFF_MINUTE">时间差（分钟） TIME_DIFF_MINUTE</Option>
               <Option value="TIME_DIFF_DAY">时间差（天） TIME_DIFF_DAY</Option>
               <Option value="NUMERIC_DIFF">数值差 NUMERIC_DIFF</Option>
-              <Option value="STRING_EQ">字符串相等 STRING_EQ</Option>
             </Select>
           </Form.Item>
-          <Form.Item name="extraValue3" label="比较符" rules={[{ required: true }]}>
-            <Select placeholder="选择比较符">
-              <Option value="==">等于 ==</Option>
-              <Option value="!=">不等于 !=</Option>
-              <Option value="&gt;">大于 &gt;</Option>
-              <Option value="&lt;">小于 &lt;</Option>
-              <Option value="&gt;=">大于等于 &gt;=</Option>
-              <Option value="&lt;=">小于等于 &lt;=</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="extraValue4" label="阈值" rules={[{ required: true }]}>
-            <Input placeholder="如: 2" />
-          </Form.Item>
+          {fieldCompareType === 'STRING_EQ' ? (
+            <>
+              <Form.Item name="extraValue3" label="比较符" rules={[{ required: true }]}>
+                <Select placeholder="选择比较符">
+                  <Option value="==">相等 ==（A 与 B 一致）</Option>
+                  <Option value="!=">不等 !=（A 与 B 不一致）</Option>
+                </Select>
+              </Form.Item>
+              <Form.Item name="extraValue4" initialValue="0" hidden>
+                <Input />
+              </Form.Item>
+            </>
+          ) : (
+            <>
+              <Form.Item name="extraValue3" label="比较符" rules={[{ required: true }]}>
+                <Select placeholder="选择比较符">
+                  <Option value="==">等于 ==</Option>
+                  <Option value="!=">不等于 !=</Option>
+                  <Option value=">">大于 &gt;</Option>
+                  <Option value="<">小于 &lt;</Option>
+                  <Option value=">=">大于等于 &gt;=</Option>
+                  <Option value="<=">小于等于 &lt;=</Option>
+                </Select>
+              </Form.Item>
+              <Form.Item name="extraValue4" label="阈值" rules={[{ required: true }]}>
+                <Input placeholder="时间差/数值差的阈值，如: 12 表示12小时" />
+              </Form.Item>
+            </>
+          )}
         </>
       ) : selectedOperator === 'between' ? (
         <>

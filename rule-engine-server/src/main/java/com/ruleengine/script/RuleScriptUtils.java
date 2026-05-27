@@ -591,8 +591,7 @@ public class RuleScriptUtils {
      * @return 命中条件返回 TRUE
      */
     public static boolean fieldCompare(Object valA, Object valB, String compareType, String op, String threshold) {
-        if (valA == null || valB == null || !StringUtils.hasText(compareType)
-                || !StringUtils.hasText(op) || !StringUtils.hasText(threshold)) {
+        if (valA == null || valB == null || !StringUtils.hasText(compareType) || !StringUtils.hasText(op)) {
             return false;
         }
 
@@ -617,6 +616,9 @@ public class RuleScriptUtils {
                 return false;
         }
 
+        if (!StringUtils.hasText(threshold)) {
+            return false;
+        }
         return compareNumeric(diff, op, Double.parseDouble(threshold));
     }
 
